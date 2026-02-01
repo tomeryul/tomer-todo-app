@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, X, Timer } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Timer, Plus, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PomodoroTimerProps {
@@ -9,42 +9,60 @@ interface PomodoroTimerProps {
   onClose: () => void;
 }
 
-const WORK_TIME = 25 * 60; // 25 minutes
-const BREAK_TIME = 5 * 60; // 5 minutes
+const MAX_TIME = 24 * 60 * 60; // 24 hours in seconds
 
 export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps) => {
-  const [timeLeft, setTimeLeft] = useState(WORK_TIME);
+  const [timeLeft, setTimeLeft] = useState(25 * 60); // Default 25 minutes
+  const [initialTime, setInitialTime] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [isBreak, setIsBreak] = useState(false);
-  const [sessions, setSessions] = useState(0);
+  const [customHours, setCustomHours] = useState(0);
+  const [customMinutes, setCustomMinutes] = useState(25);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = isBreak 
-    ? ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100 
-    : ((WORK_TIME - timeLeft) / WORK_TIME) * 100;
+  const progress = initialTime > 0 ? ((initialTime - timeLeft) / initialTime) * 100 : 0;
 
   const handleReset = useCallback(() => {
-    setTimeLeft(isBreak ? BREAK_TIME : WORK_TIME);
+    setTimeLeft(initialTime);
     setIsRunning(false);
-  }, [isBreak]);
+  }, [initialTime]);
 
   const handleToggle = () => {
+    if (!isRunning && timeLeft === 0) {
+      // If timer finished, reset before starting
+      setTimeLeft(initialTime);
+    }
     setIsRunning(!isRunning);
   };
 
-  const switchMode = useCallback(() => {
-    if (!isBreak) {
-      setSessions((prev) => prev + 1);
-    }
-    setIsBreak(!isBreak);
-    setTimeLeft(!isBreak ? BREAK_TIME : WORK_TIME);
-    setIsRunning(false);
-  }, [isBreak]);
+  const updateTime = (hours: number, minutes: number) => {
+    const newHours = Math.max(0, Math.min(23, hours));
+    const newMinutes = Math.max(0, Math.min(59, minutes));
+    setCustomHours(newHours);
+    setCustomMinutes(newMinutes);
+    const totalSeconds = (newHours * 3600) + (newMinutes * 60);
+    setTimeLeft(Math.min(totalSeconds, MAX_TIME));
+    setInitialTime(Math.min(totalSeconds, MAX_TIME));
+  };
+
+  const presetTimes = [
+    { label: '5 דק׳', minutes: 5 },
+    { label: '15 דק׳', minutes: 15 },
+    { label: '25 דק׳', minutes: 25 },
+    { label: '45 דק׳', minutes: 45 },
+    { label: '1 שעה', minutes: 60 },
+    { label: '2 שעות', minutes: 120 },
+  ];
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -53,18 +71,25 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isRunning) {
+      setIsRunning(false);
       // Play notification sound
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(isBreak ? 'ההפסקה נגמרה!' : 'הזמן נגמר! זמן להפסקה');
+        new Notification('⏰ הזמן נגמר!', { body: taskName || 'המשימה הסתיימה' });
       }
-      switchMode();
+      // Try to play audio
+      try {
+        audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp2VjX95dXiCi5eemZOJfXRxdoGNmZ6ZkoZ7cXB1gY6an5qTh3tycHWAjZqfmpOHe3Fwd4KOnJ+akod8cnF3go6cn5qSh3xycXeCjpyfmpKHfHJxd4KOnJ+akod8cnF3go6cn5qSh3xycXeCjpyfmpKHfHJxd4KOnJ+akoZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfQ==');
+        audioRef.current.play().catch(() => {});
+      } catch (e) {
+        // Ignore audio errors
+      }
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, timeLeft, isBreak, switchMode]);
+  }, [isRunning, timeLeft, taskName]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -72,6 +97,13 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
       Notification.requestPermission();
     }
   }, []);
+
+  // Reset when opening with new task
+  useEffect(() => {
+    if (isOpen) {
+      setIsRunning(false);
+    }
+  }, [isOpen, taskName]);
 
   return (
     <AnimatePresence>
@@ -91,13 +123,13 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed inset-x-4 top-[15%] mx-auto max-w-sm bg-background border border-border rounded-3xl shadow-2xl z-50 overflow-hidden"
+            className="fixed inset-x-4 top-[10%] mx-auto max-w-sm bg-background border border-border rounded-3xl shadow-2xl z-50 overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Timer className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold">Pomodoro</h2>
+                <h2 className="font-semibold">טיימר</h2>
               </div>
               <button
                 onClick={onClose}
@@ -115,18 +147,6 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   {taskName}
                 </p>
               )}
-
-              {/* Mode Badge */}
-              <div
-                className={cn(
-                  'px-4 py-1.5 rounded-full text-sm font-medium mb-6',
-                  isBreak
-                    ? 'bg-success/10 text-success'
-                    : 'bg-primary/10 text-primary'
-                )}
-              >
-                {isBreak ? '🧘 הפסקה' : '🎯 עבודה'}
-              </div>
 
               {/* Timer Circle */}
               <div className="relative w-48 h-48 mb-6">
@@ -151,23 +171,88 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 88}
                     strokeDashoffset={2 * Math.PI * 88 * (1 - progress / 100)}
-                    className={cn(
-                      'transition-all duration-1000',
-                      isBreak ? 'text-success' : 'text-primary'
-                    )}
+                    className="text-primary transition-all duration-1000"
                   />
                 </svg>
 
                 {/* Time Display */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl font-bold tabular-nums">
+                  <span className="text-3xl font-bold tabular-nums">
                     {formatTime(timeLeft)}
                   </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    סשנים: {sessions}
-                  </span>
+                  {timeLeft === 0 && (
+                    <span className="text-sm text-success mt-1">הזמן נגמר! ✓</span>
+                  )}
                 </div>
               </div>
+
+              {/* Time Adjustment (only when not running) */}
+              {!isRunning && (
+                <div className="w-full mb-4 space-y-3">
+                  {/* Preset buttons */}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {presetTimes.map((preset) => (
+                      <button
+                        key={preset.minutes}
+                        onClick={() => updateTime(Math.floor(preset.minutes / 60), preset.minutes % 60)}
+                        className={cn(
+                          'px-3 py-1.5 text-xs rounded-lg border transition-all',
+                          initialTime === preset.minutes * 60
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted border-border hover:border-primary/50'
+                        )}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom time input */}
+                  <div className="flex items-center justify-center gap-4">
+                    {/* Hours */}
+                    <div className="flex flex-col items-center">
+                      <button
+                        onClick={() => updateTime(customHours + 1, customMinutes)}
+                        className="p-1 rounded hover:bg-muted"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <span className="text-2xl font-bold w-12 text-center tabular-nums">
+                        {customHours.toString().padStart(2, '0')}
+                      </span>
+                      <button
+                        onClick={() => updateTime(customHours - 1, customMinutes)}
+                        className="p-1 rounded hover:bg-muted"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs text-muted-foreground">שעות</span>
+                    </div>
+                    
+                    <span className="text-2xl font-bold">:</span>
+                    
+                    {/* Minutes */}
+                    <div className="flex flex-col items-center">
+                      <button
+                        onClick={() => updateTime(customHours, customMinutes + 5)}
+                        className="p-1 rounded hover:bg-muted"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <span className="text-2xl font-bold w-12 text-center tabular-nums">
+                        {customMinutes.toString().padStart(2, '0')}
+                      </span>
+                      <button
+                        onClick={() => updateTime(customHours, customMinutes - 5)}
+                        className="p-1 rounded hover:bg-muted"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs text-muted-foreground">דקות</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Controls */}
               <div className="flex items-center gap-3">
@@ -184,11 +269,13 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleToggle}
+                  disabled={initialTime === 0}
                   className={cn(
                     'p-5 rounded-2xl transition-all',
                     isRunning
                       ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
-                      : 'gradient-primary text-primary-foreground shadow-glow'
+                      : 'gradient-primary text-primary-foreground shadow-glow',
+                    initialTime === 0 && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   {isRunning ? (
@@ -196,15 +283,6 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   ) : (
                     <Play className="w-6 h-6 mr-0.5" />
                   )}
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={switchMode}
-                  className="p-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors text-xs font-medium"
-                >
-                  {isBreak ? 'עבודה' : 'הפסקה'}
                 </motion.button>
               </div>
             </div>

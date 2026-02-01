@@ -32,6 +32,7 @@ const Index = () => {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
+    toggleTag,
   } = useTasks();
 
   const today = startOfDay(new Date());
@@ -110,6 +111,7 @@ const Index = () => {
                 onToggleSubtask={(taskId, subtaskId) => toggleSubtask(dayTask.date, taskId, subtaskId)}
                 onDeleteSubtask={(taskId, subtaskId) => deleteSubtask(dayTask.date, taskId, subtaskId)}
                 onStartPomodoro={(taskName) => setPomodoroTask(taskName)}
+                onToggleTag={(taskId, tag) => toggleTag(dayTask.date, taskId, tag)}
               />
             </motion.div>
           ))}
