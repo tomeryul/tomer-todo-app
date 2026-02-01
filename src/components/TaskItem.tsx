@@ -1,13 +1,19 @@
-import { motion } from 'framer-motion';
-import { Check, Trash2, Flag } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Trash2, Flag, ArrowLeftRight } from 'lucide-react';
 import { Task, Priority } from '@/types/task';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
 
 interface TaskItemProps {
   task: Task;
   onToggle: () => void;
   onDelete: () => void;
   onPriorityChange: (priority: Priority) => void;
+  onMoveToDate?: (toDate: string) => void;
+  availableDates?: string[];
+  currentDate?: string;
 }
 
 const priorityColors: Record<Priority, string> = {
@@ -22,13 +28,25 @@ const priorityLabels: Record<Priority, string> = {
   low: 'נמוכה',
 };
 
-export const TaskItem = ({ task, onToggle, onDelete, onPriorityChange }: TaskItemProps) => {
+export const TaskItem = ({ 
+  task, 
+  onToggle, 
+  onDelete, 
+  onPriorityChange,
+  onMoveToDate,
+  availableDates = [],
+  currentDate,
+}: TaskItemProps) => {
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+
   const cyclePriority = () => {
     const priorities: Priority[] = ['low', 'medium', 'high'];
     const currentIndex = priorities.indexOf(task.priority);
     const nextIndex = (currentIndex + 1) % priorities.length;
     onPriorityChange(priorities[nextIndex]);
   };
+
+  const filteredDates = availableDates.filter(date => date !== currentDate).slice(0, 7);
 
   return (
     <motion.div
@@ -82,6 +100,49 @@ export const TaskItem = ({ task, onToggle, onDelete, onPriorityChange }: TaskIte
         <Flag className="w-3 h-3" />
         {priorityLabels[task.priority]}
       </button>
+
+      {/* Move Button */}
+      {onMoveToDate && filteredDates.length > 0 && (
+        <div className="relative">
+          <button
+            onClick={() => setShowMoveMenu(!showMoveMenu)}
+            className={cn(
+              'opacity-0 group-hover:opacity-100 p-1.5 rounded-md transition-all',
+              'text-muted-foreground hover:text-primary hover:bg-primary/10',
+              showMoveMenu && 'opacity-100 text-primary bg-primary/10'
+            )}
+            title="העבר ליום אחר"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+          </button>
+          <AnimatePresence>
+            {showMoveMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute left-0 top-full mt-1 z-20 bg-background border border-border rounded-xl shadow-lg p-2 min-w-[180px]"
+              >
+                <p className="text-xs text-muted-foreground mb-2 px-2">העבר ליום:</p>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDates.map((date) => (
+                    <button
+                      key={date}
+                      onClick={() => {
+                        onMoveToDate(date);
+                        setShowMoveMenu(false);
+                      }}
+                      className="w-full text-right px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors"
+                    >
+                      {format(new Date(date), 'EEEE, d/M', { locale: he })}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       <button
         onClick={onDelete}

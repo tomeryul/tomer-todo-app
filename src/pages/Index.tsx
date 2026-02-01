@@ -70,6 +70,8 @@ const Index = () => {
                 onUpdatePriority={(taskId, priority) =>
                   updateTaskPriority(dayTask.date, taskId, priority)
                 }
+                onMoveTask={(taskId, toDate) => moveTaskToDate(dayTask.date, taskId, toDate)}
+                availableDates={daysTasks.map((d) => d.date)}
               />
             </motion.div>
           ))}

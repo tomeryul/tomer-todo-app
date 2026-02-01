@@ -19,6 +19,8 @@ interface DayCardProps {
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onUpdatePriority: (taskId: string, priority: Priority) => void;
+  onMoveTask?: (taskId: string, toDate: string) => void;
+  availableDates?: string[];
 }
 
 export const DayCard = ({
@@ -29,6 +31,8 @@ export const DayCard = ({
   onToggleTask,
   onDeleteTask,
   onUpdatePriority,
+  onMoveTask,
+  availableDates = [],
 }: DayCardProps) => {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -163,6 +167,9 @@ export const DayCard = ({
                 onToggle={() => onToggleTask(task.id)}
                 onDelete={() => onDeleteTask(task.id)}
                 onPriorityChange={(priority) => onUpdatePriority(task.id, priority)}
+                onMoveToDate={onMoveTask ? (toDate) => onMoveTask(task.id, toDate) : undefined}
+                availableDates={availableDates}
+                currentDate={dayTasks.date}
               />
             ))
           )}
