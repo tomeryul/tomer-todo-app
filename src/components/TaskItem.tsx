@@ -112,24 +112,24 @@ export const TaskItem = ({
           )}
         </button>
 
-        <div className="flex-1 min-w-0">
-          <span
+        <div className="flex-1 min-w-0 py-1">
+          <p
             className={cn(
-              'text-sm transition-all duration-200 block',
+              'text-sm leading-relaxed transition-all duration-200 break-words whitespace-pre-wrap',
               task.completed && 'line-through text-muted-foreground'
             )}
           >
             {task.text}
-          </span>
+          </p>
           
           {/* Tags Display */}
           {taskTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {taskTags.map((tag) => (
                 <span
                   key={tag}
                   className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded border',
+                    'text-xs px-2 py-0.5 rounded-full border font-medium',
                     TAG_CONFIG[tag].color
                   )}
                 >
@@ -140,8 +140,8 @@ export const TaskItem = ({
           )}
           
           {hasSubtasks && (
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${subtaskProgress}%` }}
@@ -176,25 +176,26 @@ export const TaskItem = ({
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="absolute left-0 top-full mt-1 z-20 bg-background border border-border rounded-xl shadow-lg p-2 min-w-[140px]"
                 >
-                  <p className="text-xs text-muted-foreground mb-2 px-2">תגיות:</p>
+                  <p className="text-xs text-muted-foreground mb-2 px-2">בחר תגיות:</p>
                   <div className="space-y-1">
                     {(Object.keys(TAG_CONFIG) as TagType[]).map((tag) => (
                       <button
                         key={tag}
                         onClick={() => {
                           onToggleTag(tag);
+                          setShowTagMenu(false);
                         }}
                         className={cn(
-                          'w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-lg transition-colors',
+                          'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors',
                           taskTags.includes(tag)
                             ? TAG_CONFIG[tag].color
                             : 'hover:bg-muted'
                         )}
                       >
                         <span>{TAG_CONFIG[tag].icon}</span>
-                        <span>{TAG_CONFIG[tag].label}</span>
+                        <span className="flex-1 text-right">{TAG_CONFIG[tag].label}</span>
                         {taskTags.includes(tag) && (
-                          <Check className="w-3 h-3 mr-auto" />
+                          <Check className="w-4 h-4" />
                         )}
                       </button>
                     ))}
