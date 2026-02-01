@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, CalendarDays, Sparkles } from 'lucide-react';
-import { DayTasks, Priority } from '@/types/task';
+import { DayTasks, Priority, Tag } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ interface DayCardProps {
   onToggleSubtask?: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask?: (taskId: string, subtaskId: string) => void;
   onStartPomodoro?: (taskName: string) => void;
+  onToggleTag?: (taskId: string, tag: Tag) => void;
 }
 
 export const DayCard = ({
@@ -41,6 +42,7 @@ export const DayCard = ({
   onToggleSubtask,
   onDeleteSubtask,
   onStartPomodoro,
+  onToggleTag,
 }: DayCardProps) => {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -182,6 +184,7 @@ export const DayCard = ({
                 onToggleSubtask={onToggleSubtask ? (subtaskId) => onToggleSubtask(task.id, subtaskId) : undefined}
                 onDeleteSubtask={onDeleteSubtask ? (subtaskId) => onDeleteSubtask(task.id, subtaskId) : undefined}
                 onStartPomodoro={onStartPomodoro ? () => onStartPomodoro(task.text) : undefined}
+                onToggleTag={onToggleTag ? (tag) => onToggleTag(task.id, tag) : undefined}
               />
             ))
           )}
