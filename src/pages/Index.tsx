@@ -129,7 +129,7 @@ const Index = () => {
       {/* Pomodoro Timer */}
       <PomodoroTimer
         isOpen={pomodoroTask !== null}
-        onClose={() => setPomodoroTask(null)}
+        onClose={() => setPomodoroTask(pomodoroTask === null ? '' : null)}
         taskName={pomodoroTask || undefined}
       />
     </div>
