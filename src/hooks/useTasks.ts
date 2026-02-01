@@ -74,6 +74,24 @@ export const useTasks = () => {
     );
   };
 
+  const addTaskToMultipleDays = (dates: string[], text: string, priority: Priority = 'medium') => {
+    setDaysTasks(prev =>
+      prev.map(day => {
+        if (dates.includes(day.date)) {
+          const newTask: Task = {
+            id: generateId(),
+            text,
+            completed: false,
+            priority,
+            createdAt: new Date().toISOString(),
+          };
+          return { ...day, tasks: [...day.tasks, newTask] };
+        }
+        return day;
+      })
+    );
+  };
+
   const toggleTask = (date: string, taskId: string) => {
     setDaysTasks(prev =>
       prev.map(day =>
@@ -231,6 +249,7 @@ export const useTasks = () => {
   return {
     daysTasks,
     addTask,
+    addTaskToMultipleDays,
     toggleTask,
     deleteTask,
     updateTaskPriority,
