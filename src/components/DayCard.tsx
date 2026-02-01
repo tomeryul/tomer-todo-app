@@ -21,6 +21,10 @@ interface DayCardProps {
   onUpdatePriority: (taskId: string, priority: Priority) => void;
   onMoveTask?: (taskId: string, toDate: string) => void;
   availableDates?: string[];
+  onAddSubtask?: (taskId: string, text: string) => void;
+  onToggleSubtask?: (taskId: string, subtaskId: string) => void;
+  onDeleteSubtask?: (taskId: string, subtaskId: string) => void;
+  onStartPomodoro?: (taskName: string) => void;
 }
 
 export const DayCard = ({
@@ -33,6 +37,10 @@ export const DayCard = ({
   onUpdatePriority,
   onMoveTask,
   availableDates = [],
+  onAddSubtask,
+  onToggleSubtask,
+  onDeleteSubtask,
+  onStartPomodoro,
 }: DayCardProps) => {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -170,6 +178,10 @@ export const DayCard = ({
                 onMoveToDate={onMoveTask ? (toDate) => onMoveTask(task.id, toDate) : undefined}
                 availableDates={availableDates}
                 currentDate={dayTasks.date}
+                onAddSubtask={onAddSubtask ? (text) => onAddSubtask(task.id, text) : undefined}
+                onToggleSubtask={onToggleSubtask ? (subtaskId) => onToggleSubtask(task.id, subtaskId) : undefined}
+                onDeleteSubtask={onDeleteSubtask ? (subtaskId) => onDeleteSubtask(task.id, subtaskId) : undefined}
+                onStartPomodoro={onStartPomodoro ? () => onStartPomodoro(task.text) : undefined}
               />
             ))
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Task, DayTasks, Priority } from '@/types/task';
+import { Task, DayTasks, Priority, SubTask } from '@/types/task';
 import { format, addDays, startOfDay, isToday, isBefore } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -136,8 +136,24 @@ export const useTasks = () => {
 
   const getProgress = (tasks: Task[]) => {
     if (tasks.length === 0) return 0;
-    const completed = tasks.filter(t => t.completed).length;
-    return Math.round((completed / tasks.length) * 100);
+    
+    let totalItems = 0;
+    let completedItems = 0;
+    
+    tasks.forEach(task => {
+      const subtasks = task.subtasks || [];
+      if (subtasks.length > 0) {
+        // If task has subtasks, count them
+        totalItems += subtasks.length;
+        completedItems += subtasks.filter(s => s.completed).length;
+      } else {
+        // Otherwise count the task itself
+        totalItems += 1;
+        completedItems += task.completed ? 1 : 0;
+      }
+    });
+    
+    return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   };
 
   const getDayInfo = (dateString: string) => {
@@ -243,6 +259,72 @@ export const useTasks = () => {
     }
   };
 
+  // Subtask management
+  const addSubtask = (date: string, taskId: string, text: string) => {
+    const newSubtask: SubTask = {
+      id: generateId(),
+      text,
+      completed: false,
+    };
+
+    setDaysTasks(prev =>
+      prev.map(day =>
+        day.date === date
+          ? {
+              ...day,
+              tasks: day.tasks.map(task =>
+                task.id === taskId
+                  ? { ...task, subtasks: [...(task.subtasks || []), newSubtask] }
+                  : task
+              ),
+            }
+          : day
+      )
+    );
+  };
+
+  const toggleSubtask = (date: string, taskId: string, subtaskId: string) => {
+    setDaysTasks(prev =>
+      prev.map(day =>
+        day.date === date
+          ? {
+              ...day,
+              tasks: day.tasks.map(task =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      subtasks: (task.subtasks || []).map(sub =>
+                        sub.id === subtaskId ? { ...sub, completed: !sub.completed } : sub
+                      ),
+                    }
+                  : task
+              ),
+            }
+          : day
+      )
+    );
+  };
+
+  const deleteSubtask = (date: string, taskId: string, subtaskId: string) => {
+    setDaysTasks(prev =>
+      prev.map(day =>
+        day.date === date
+          ? {
+              ...day,
+              tasks: day.tasks.map(task =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      subtasks: (task.subtasks || []).filter(sub => sub.id !== subtaskId),
+                    }
+                  : task
+              ),
+            }
+          : day
+      )
+    );
+  };
+
   const backlogTasks = getBacklogTasks();
   const todayTasks = getTodayTasks();
 
@@ -258,5 +340,8 @@ export const useTasks = () => {
     backlogTasks,
     moveTaskToDate,
     todayTasks,
+    addSubtask,
+    toggleSubtask,
+    deleteSubtask,
   };
 };
