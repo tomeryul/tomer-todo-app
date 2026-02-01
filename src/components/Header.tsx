@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, ListTodo, Flame } from 'lucide-react';
+import { CheckCircle2, ListTodo, Flame, AlertCircle } from 'lucide-react';
 import { DayTasks } from '@/types/task';
 
 interface HeaderProps {
   daysTasks: DayTasks[];
+  backlogCount?: number;
 }
 
-export const Header = ({ daysTasks }: HeaderProps) => {
+export const Header = ({ daysTasks, backlogCount = 0 }: HeaderProps) => {
   const totalTasks = daysTasks.reduce((acc, day) => acc + day.tasks.length, 0);
   const completedTasks = daysTasks.reduce(
     (acc, day) => acc + day.tasks.filter((t) => t.completed).length,
@@ -32,7 +33,7 @@ export const Header = ({ daysTasks }: HeaderProps) => {
       <h1 className="text-3xl font-bold text-foreground mb-2">המשימות שלי</h1>
       <p className="text-muted-foreground mb-6">נהל את המשימות שלך בקלות ויעילות</p>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-3 flex-wrap">
         <StatBadge
           icon={<ListTodo className="w-4 h-4" />}
           label="סה״כ משימות"
@@ -50,6 +51,14 @@ export const Header = ({ daysTasks }: HeaderProps) => {
           value={streak}
           variant="accent"
         />
+        {backlogCount > 0 && (
+          <StatBadge
+            icon={<AlertCircle className="w-4 h-4" />}
+            label="להשלמה"
+            value={backlogCount}
+            variant="destructive"
+          />
+        )}
       </div>
     </motion.header>
   );
@@ -59,7 +68,7 @@ interface StatBadgeProps {
   icon: React.ReactNode;
   label: string;
   value: number;
-  variant?: 'default' | 'success' | 'accent';
+  variant?: 'default' | 'success' | 'accent' | 'destructive';
 }
 
 const StatBadge = ({ icon, label, value, variant = 'default' }: StatBadgeProps) => {
@@ -67,6 +76,7 @@ const StatBadge = ({ icon, label, value, variant = 'default' }: StatBadgeProps) 
     default: 'bg-primary/10 text-primary',
     success: 'bg-success/10 text-success',
     accent: 'bg-accent/10 text-accent',
+    destructive: 'bg-destructive/10 text-destructive',
   };
 
   return (

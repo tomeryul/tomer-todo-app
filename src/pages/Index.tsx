@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useTasks } from '@/hooks/useTasks';
 import { Header } from '@/components/Header';
 import { DayCard } from '@/components/DayCard';
+import { BacklogSection } from '@/components/BacklogSection';
 
 const Index = () => {
   const {
@@ -12,12 +13,24 @@ const Index = () => {
     updateTaskPriority,
     getProgress,
     getDayInfo,
+    backlogTasks,
+    moveTaskToDate,
   } = useTasks();
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 pb-12">
-        <Header daysTasks={daysTasks} />
+        <Header daysTasks={daysTasks} backlogCount={backlogTasks.length} />
+
+        {/* Backlog Section */}
+        <BacklogSection
+          backlogTasks={backlogTasks}
+          onToggleTask={toggleTask}
+          onDeleteTask={deleteTask}
+          onUpdatePriority={updateTaskPriority}
+          onMoveToDate={moveTaskToDate}
+          availableDates={daysTasks.map((d) => d.date)}
+        />
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -30,7 +43,7 @@ const Index = () => {
               key={dayTask.date}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
+              transition={{ delay: 0.05 * Math.min(index, 10) }}
             >
               <DayCard
                 dayTasks={dayTask}
