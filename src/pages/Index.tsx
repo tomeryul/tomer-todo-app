@@ -1,16 +1,23 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { CalendarPlus } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { Header } from '@/components/Header';
 import { DayCard } from '@/components/DayCard';
 import { BacklogSection } from '@/components/BacklogSection';
 import { TodaySummary } from '@/components/TodaySummary';
+import { MultiDayTaskModal } from '@/components/MultiDayTaskModal';
 import { format, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const Index = () => {
+  const [isMultiDayModalOpen, setIsMultiDayModalOpen] = useState(false);
+
   const {
     daysTasks,
     addTask,
+    addTaskToMultipleDays,
     toggleTask,
     deleteTask,
     updateTaskPriority,
@@ -36,6 +43,22 @@ const Index = () => {
           dayName={todayDayName} 
           formattedDate={todayFormattedDate} 
         />
+
+        {/* Multi-day add button */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => setIsMultiDayModalOpen(true)}
+          className={cn(
+            'w-full mb-6 p-4 rounded-2xl border-2 border-dashed border-primary/30',
+            'flex items-center justify-center gap-3',
+            'text-primary hover:bg-primary/5 hover:border-primary/50 transition-all',
+            'group'
+          )}
+        >
+          <CalendarPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          <span className="font-medium">הוסף משימה לכמה ימים</span>
+        </motion.button>
 
         {/* Backlog Section */}
         <BacklogSection
@@ -77,6 +100,14 @@ const Index = () => {
           ))}
         </motion.div>
       </div>
+
+      {/* Multi-day Task Modal */}
+      <MultiDayTaskModal
+        isOpen={isMultiDayModalOpen}
+        onClose={() => setIsMultiDayModalOpen(false)}
+        availableDates={daysTasks.map((d) => d.date)}
+        onAddTask={addTaskToMultipleDays}
+      />
     </div>
   );
 };
