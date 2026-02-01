@@ -1,11 +1,51 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { motion } from 'framer-motion';
+import { useTasks } from '@/hooks/useTasks';
+import { Header } from '@/components/Header';
+import { DayCard } from '@/components/DayCard';
 
 const Index = () => {
+  const {
+    daysTasks,
+    addTask,
+    toggleTask,
+    deleteTask,
+    updateTaskPriority,
+    getProgress,
+    getDayInfo,
+  } = useTasks();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto px-4 pb-12">
+        <Header daysTasks={daysTasks} />
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="space-y-4"
+        >
+          {daysTasks.map((dayTask, index) => (
+            <motion.div
+              key={dayTask.date}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
+              <DayCard
+                dayTasks={dayTask}
+                dayInfo={getDayInfo(dayTask.date)}
+                progress={getProgress(dayTask.tasks)}
+                onAddTask={(text, priority) => addTask(dayTask.date, text, priority)}
+                onToggleTask={(taskId) => toggleTask(dayTask.date, taskId)}
+                onDeleteTask={(taskId) => deleteTask(dayTask.date, taskId)}
+                onUpdatePriority={(taskId, priority) =>
+                  updateTaskPriority(dayTask.date, taskId, priority)
+                }
+              />
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </div>
   );
