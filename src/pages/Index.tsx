@@ -3,6 +3,9 @@ import { useTasks } from '@/hooks/useTasks';
 import { Header } from '@/components/Header';
 import { DayCard } from '@/components/DayCard';
 import { BacklogSection } from '@/components/BacklogSection';
+import { TodaySummary } from '@/components/TodaySummary';
+import { format, startOfDay } from 'date-fns';
+import { he } from 'date-fns/locale';
 
 const Index = () => {
   const {
@@ -15,12 +18,24 @@ const Index = () => {
     getDayInfo,
     backlogTasks,
     moveTaskToDate,
+    todayTasks,
   } = useTasks();
+
+  const today = startOfDay(new Date());
+  const todayDayName = format(today, 'EEEE', { locale: he });
+  const todayFormattedDate = format(today, 'd בMMMM', { locale: he });
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 pb-12">
         <Header daysTasks={daysTasks} backlogCount={backlogTasks.length} />
+
+        {/* Today's Summary */}
+        <TodaySummary 
+          tasks={todayTasks} 
+          dayName={todayDayName} 
+          formattedDate={todayFormattedDate} 
+        />
 
         {/* Backlog Section */}
         <BacklogSection
