@@ -134,29 +134,52 @@ export const useTasks = () => {
 
   // Get incomplete tasks from past days (backlog)
   const getBacklogTasks = () => {
+    const today = startOfDay(new Date());
+    const todayKey = formatDateKey(today);
+    const backlog: Array<Task & { originalDate: string }> = [];
+
+    // Check current state first
+    daysTasks.forEach((day: DayTasks) => {
+      if (isBefore(new Date(day.date), today)) {
+        day.tasks
+          .filter((task: Task) => !task.completed)
+          .forEach((task: Task) => {
+            backlog.push({ ...task, originalDate: day.date });
+          });
+      }
+    });
+
+    // Also check localStorage for past days not in current state
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-
-    try {
-      const parsed = JSON.parse(stored);
-      const today = startOfDay(new Date());
-      const backlog: Array<Task & { originalDate: string }> = [];
-
-      parsed.forEach((day: DayTasks) => {
-        const dayDate = new Date(day.date);
-        if (isBefore(dayDate, today)) {
-          day.tasks
-            .filter((task: Task) => !task.completed)
-            .forEach((task: Task) => {
-              backlog.push({ ...task, originalDate: day.date });
-            });
-        }
-      });
-
-      return backlog;
-    } catch (e) {
-      return [];
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        parsed.forEach((day: DayTasks) => {
+          const dayDate = new Date(day.date);
+          // Only check days that are in the past AND not already in daysTasks
+          if (isBefore(dayDate, today) && !daysTasks.find(d => d.date === day.date)) {
+            day.tasks
+              .filter((task: Task) => !task.completed)
+              .forEach((task: Task) => {
+                if (!backlog.find(b => b.id === task.id)) {
+                  backlog.push({ ...task, originalDate: day.date });
+                }
+              });
+          }
+        });
+      } catch (e) {
+        // Ignore parse errors
+      }
     }
+
+    return backlog;
+  };
+
+  // Get today's tasks
+  const getTodayTasks = () => {
+    const todayKey = formatDateKey(startOfDay(new Date()));
+    const today = daysTasks.find(d => d.date === todayKey);
+    return today?.tasks || [];
   };
 
   const moveTaskToDate = (fromDate: string, taskId: string, toDate: string) => {
@@ -203,6 +226,7 @@ export const useTasks = () => {
   };
 
   const backlogTasks = getBacklogTasks();
+  const todayTasks = getTodayTasks();
 
   return {
     daysTasks,
@@ -214,5 +238,6 @@ export const useTasks = () => {
     getDayInfo,
     backlogTasks,
     moveTaskToDate,
+    todayTasks,
   };
 };
