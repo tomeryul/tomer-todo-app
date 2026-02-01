@@ -115,9 +115,10 @@ export const TaskItem = ({
         <div className="flex-1 min-w-0 py-1">
           <p
             className={cn(
-              'text-sm leading-relaxed transition-all duration-200',
+              'text-sm leading-relaxed transition-all duration-200 truncate',
               task.completed && 'line-through text-muted-foreground'
             )}
+            title={task.text}
           >
             {task.text}
           </p>
