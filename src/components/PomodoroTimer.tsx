@@ -50,7 +50,13 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
       setTimeLeft(initialTime);
     }
     setIsRunning(!isRunning);
+  };
+
+  const handleCancelSchedule = () => {
     setScheduledStart(null);
+    if (schedulerTimeoutRef.current) {
+      clearTimeout(schedulerTimeoutRef.current);
+    }
   };
 
   const updateTime = (hours: number, minutes: number) => {
@@ -69,7 +75,6 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
     const scheduled = new Date();
     scheduled.setHours(hours, minutes, 0, 0);
     
-    // If time has passed today, schedule for tomorrow
     if (scheduled <= now) {
       scheduled.setDate(scheduled.getDate() + 1);
     }
@@ -86,7 +91,6 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
     schedulerTimeoutRef.current = setTimeout(() => {
       setIsRunning(true);
       setScheduledStart(null);
-      // Notify user
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('⏰ הטיימר התחיל!', { body: taskName || 'הטיימר המתוזמן שלך התחיל' });
       }
@@ -125,14 +129,12 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
     };
   }, [isRunning, timeLeft, taskName]);
 
-  // Request notification permission
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
-  // Cleanup scheduler on unmount
   useEffect(() => {
     return () => {
       if (schedulerTimeoutRef.current) {
@@ -141,7 +143,6 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
     };
   }, []);
 
-  // Keep timer running even when modal is "closed" - show minimized version
   const shouldShowMinimized = !isOpen && (isRunning || scheduledStart);
   const shouldShowFull = isOpen && !isMinimized;
 
@@ -195,7 +196,7 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
 
               <div className="flex flex-col">
                 <span className="text-lg font-bold tabular-nums">
-                  {scheduledStart ? scheduledStart : formatTime(timeLeft)}
+                  {formatTime(timeLeft)}
                 </span>
                 {taskName && (
                   <span className="text-xs text-muted-foreground truncate max-w-[100px]">
@@ -203,40 +204,42 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   </span>
                 )}
                 {scheduledStart && (
-                  <span className="text-xs text-primary">מתוזמן</span>
+                  <span className="text-xs text-primary">מתוזמן ל-{scheduledStart}</span>
                 )}
               </div>
 
               <div className="flex items-center gap-1">
-                {!scheduledStart && (
-                  <button
-                    onClick={handleToggle}
-                    className={cn(
-                      'p-2 rounded-lg transition-colors',
-                      isRunning
-                        ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
-                        : 'bg-primary/10 text-primary hover:bg-primary/20'
-                    )}
-                  >
-                    {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </button>
-                )}
+                {/* Always show play/pause button */}
                 <button
                   onClick={() => {
-                    if (isOpen) {
-                      setIsMinimized(false);
-                    } else {
-                      // Re-open the full modal
-                      onClose(); // This will toggle isOpen in parent
+                    if (scheduledStart) {
+                      handleCancelSchedule();
                     }
+                    handleToggle();
                   }}
+                  className={cn(
+                    'p-2 rounded-lg transition-colors',
+                    isRunning
+                      ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  )}
+                >
+                  {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                </button>
+                
+                {/* Expand button */}
+                <button
+                  onClick={() => setIsMinimized(false)}
                   className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
                 >
                   <Maximize2 className="w-4 h-4" />
                 </button>
+                
+                {/* Close/stop button */}
                 <button
                   onClick={() => {
                     handleReset();
+                    setIsMinimized(false);
                     onClose();
                   }}
                   className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -257,7 +260,13 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsMinimized(true)}
+              onClick={() => {
+                if (isRunning || scheduledStart) {
+                  setIsMinimized(true);
+                } else {
+                  onClose();
+                }
+              }}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
             />
 
@@ -274,19 +283,21 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   <h2 className="font-semibold">טיימר</h2>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setIsMinimized(true)}
-                    className="p-2 rounded-lg hover:bg-muted transition-colors"
-                    title="מזער"
-                  >
-                    <Minimize2 className="w-5 h-5" />
-                  </button>
+                  {(isRunning || scheduledStart) && (
+                    <button
+                      onClick={() => setIsMinimized(true)}
+                      className="p-2 rounded-lg hover:bg-muted transition-colors"
+                      title="מזער"
+                    >
+                      <Minimize2 className="w-5 h-5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => {
-                      if (!isRunning && !scheduledStart) {
-                        onClose();
-                      } else {
+                      if (isRunning || scheduledStart) {
                         setIsMinimized(true);
+                      } else {
+                        onClose();
                       }
                     }}
                     className="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -308,14 +319,9 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                 {scheduledStart && (
                   <div className="mb-4 px-4 py-2 bg-primary/10 text-primary rounded-xl flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    <span className="text-sm">יתחיל ב-{scheduledStart}</span>
+                    <span className="text-sm">מתוזמן ל-{scheduledStart}</span>
                     <button
-                      onClick={() => {
-                        setScheduledStart(null);
-                        if (schedulerTimeoutRef.current) {
-                          clearTimeout(schedulerTimeoutRef.current);
-                        }
-                      }}
+                      onClick={handleCancelSchedule}
                       className="mr-2 p-1 hover:bg-primary/20 rounded"
                     >
                       <X className="w-3 h-3" />
@@ -359,7 +365,7 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   </div>
                 </div>
 
-                {/* Time Adjustment */}
+                {/* Time Adjustment - show when not running and not scheduled */}
                 {!isRunning && !scheduledStart && (
                   <div className="w-full mb-4 space-y-3">
                     <div className="flex flex-wrap gap-2 justify-center">
@@ -423,7 +429,7 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   </div>
                 )}
 
-                {/* Schedule Timer */}
+                {/* Schedule Timer - only show when not running */}
                 {!isRunning && !scheduledStart && (
                   <div className="w-full mb-4">
                     {showScheduler ? (
@@ -470,14 +476,19 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={handleToggle}
-                    disabled={initialTime === 0 || !!scheduledStart}
+                    onClick={() => {
+                      if (scheduledStart) {
+                        handleCancelSchedule();
+                      }
+                      handleToggle();
+                    }}
+                    disabled={initialTime === 0}
                     className={cn(
                       'p-5 rounded-2xl transition-all',
                       isRunning
                         ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
                         : 'gradient-primary text-primary-foreground shadow-glow',
-                      (initialTime === 0 || scheduledStart) && 'opacity-50 cursor-not-allowed'
+                      initialTime === 0 && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     {isRunning ? (
