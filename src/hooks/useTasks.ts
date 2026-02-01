@@ -4,7 +4,7 @@ import { format, addDays, startOfDay, isToday, isBefore } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 const STORAGE_KEY = 'daily-tasks';
-const DAYS_AHEAD = 7;
+const DAYS_AHEAD = 30;
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -132,6 +132,78 @@ export const useTasks = () => {
     };
   };
 
+  // Get incomplete tasks from past days (backlog)
+  const getBacklogTasks = () => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+
+    try {
+      const parsed = JSON.parse(stored);
+      const today = startOfDay(new Date());
+      const backlog: Array<Task & { originalDate: string }> = [];
+
+      parsed.forEach((day: DayTasks) => {
+        const dayDate = new Date(day.date);
+        if (isBefore(dayDate, today)) {
+          day.tasks
+            .filter((task: Task) => !task.completed)
+            .forEach((task: Task) => {
+              backlog.push({ ...task, originalDate: day.date });
+            });
+        }
+      });
+
+      return backlog;
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const moveTaskToDate = (fromDate: string, taskId: string, toDate: string) => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored);
+      let taskToMove: Task | null = null;
+
+      // Find and remove the task from the original date
+      const updatedParsed = parsed.map((day: DayTasks) => {
+        if (day.date === fromDate) {
+          const task = day.tasks.find((t: Task) => t.id === taskId);
+          if (task) {
+            taskToMove = task;
+          }
+          return {
+            ...day,
+            tasks: day.tasks.filter((t: Task) => t.id !== taskId),
+          };
+        }
+        return day;
+      });
+
+      if (taskToMove) {
+        // Save to localStorage first
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedParsed));
+
+        // Add to new date
+        setDaysTasks((prev) =>
+          prev.map((day) =>
+            day.date === toDate
+              ? { ...day, tasks: [...day.tasks, taskToMove!] }
+              : day.date === fromDate
+              ? { ...day, tasks: day.tasks.filter((t) => t.id !== taskId) }
+              : day
+          )
+        );
+      }
+    } catch (e) {
+      console.error('Failed to move task');
+    }
+  };
+
+  const backlogTasks = getBacklogTasks();
+
   return {
     daysTasks,
     addTask,
@@ -140,5 +212,7 @@ export const useTasks = () => {
     updateTaskPriority,
     getProgress,
     getDayInfo,
+    backlogTasks,
+    moveTaskToDate,
   };
 };
