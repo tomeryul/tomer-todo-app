@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Task, DayTasks, Priority, SubTask, Tag } from '@/types/task';
+import { Task, DayTasks, Priority, SubTask } from '@/types/task';
 import { format, addDays, startOfDay, isToday, isBefore } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -325,32 +325,6 @@ export const useTasks = () => {
     );
   };
 
-  // Tag management
-  const toggleTag = (date: string, taskId: string, tag: Tag) => {
-    setDaysTasks(prev =>
-      prev.map(day =>
-        day.date === date
-          ? {
-              ...day,
-              tasks: day.tasks.map(task => {
-                if (task.id === taskId) {
-                  const currentTags = task.tags || [];
-                  const hasTag = currentTags.includes(tag);
-                  return {
-                    ...task,
-                    tags: hasTag
-                      ? currentTags.filter(t => t !== tag)
-                      : [...currentTags, tag],
-                  };
-                }
-                return task;
-              }),
-            }
-          : day
-      )
-    );
-  };
-
   const backlogTasks = getBacklogTasks();
   const todayTasks = getTodayTasks();
 
@@ -369,6 +343,5 @@ export const useTasks = () => {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
-    toggleTag,
   };
 };

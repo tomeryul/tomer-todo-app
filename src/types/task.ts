@@ -14,8 +14,8 @@ export interface Task {
   completed: boolean;
   priority: Priority;
   createdAt: string;
+  date?: string;
   subtasks?: SubTask[];
-  tags?: Tag[];
 }
 
 export interface DayTasks {

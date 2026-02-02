@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CalendarPlus } from 'lucide-react';
-import { useTasks } from '@/hooks/useTasks';
+import { CalendarPlus, LogOut, Loader2 } from 'lucide-react';
+import { useSupabaseTasks } from '@/hooks/useSupabaseTasks';
+import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
 import { DayCard } from '@/components/DayCard';
 import { BacklogSection } from '@/components/BacklogSection';
@@ -9,16 +11,20 @@ import { TodaySummary } from '@/components/TodaySummary';
 import { MultiDayTaskModal } from '@/components/MultiDayTaskModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
+import { Button } from '@/components/ui/button';
 import { format, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
   const [isMultiDayModalOpen, setIsMultiDayModalOpen] = useState(false);
   const [pomodoroTask, setPomodoroTask] = useState<string | null>(null);
 
   const {
     daysTasks,
+    loading: tasksLoading,
     addTask,
     addTaskToMultipleDays,
     toggleTask,
@@ -32,17 +38,44 @@ const Index = () => {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
-  } = useTasks();
+  } = useSupabaseTasks(user?.id);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   const today = startOfDay(new Date());
   const todayDayName = format(today, 'EEEE', { locale: he });
   const todayFormattedDate = format(today, 'd בMMMM', { locale: he });
 
+  if (authLoading || tasksLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Theme Toggle - Fixed position */}
-      <div className="fixed top-4 left-4 z-30">
+      {/* Theme Toggle & Sign Out - Fixed position */}
+      <div className="fixed top-4 left-4 z-30 flex items-center gap-2">
         <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={signOut}
+          className="rounded-full"
+          title="התנתק"
+        >
+          <LogOut className="w-4 h-4" />
+        </Button>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-12">
