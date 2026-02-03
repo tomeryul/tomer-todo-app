@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Timer } from 'lucide-react';
-import { Task, Priority, SubTask } from '@/types/task';
+import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Timer, Tag } from 'lucide-react';
+import { Task, Priority, SubTask, Tag as TagType, TAG_CONFIG } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -11,6 +11,7 @@ interface TaskItemProps {
   onToggle: () => void;
   onDelete: () => void;
   onPriorityChange: (priority: Priority) => void;
+  onTagChange?: (tag: TagType | null) => void;
   onMoveToDate?: (toDate: string) => void;
   availableDates?: string[];
   currentDate?: string;
@@ -32,11 +33,13 @@ const priorityLabels: Record<Priority, string> = {
   low: 'נמוכה',
 };
 
+
 export const TaskItem = ({ 
   task, 
   onToggle, 
   onDelete, 
   onPriorityChange,
+  onTagChange,
   onMoveToDate,
   availableDates = [],
   currentDate,
@@ -46,6 +49,7 @@ export const TaskItem = ({
   onStartPomodoro,
 }: TaskItemProps) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showTagMenu, setShowTagMenu] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
@@ -136,6 +140,19 @@ export const TaskItem = ({
             </div>
           )}
 
+          {/* Tag Badge */}
+          {task.tag && TAG_CONFIG[task.tag] && (
+            <span
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border',
+                TAG_CONFIG[task.tag].color
+              )}
+            >
+              <span>{TAG_CONFIG[task.tag].icon}</span>
+              <span>{TAG_CONFIG[task.tag].label}</span>
+            </span>
+          )}
+
           {/* Priority Button */}
           <button
             onClick={cyclePriority}
@@ -147,6 +164,65 @@ export const TaskItem = ({
             <Flag className="w-3 h-3" />
             {priorityLabels[task.priority]}
           </button>
+
+          {/* Tag Selector */}
+          {onTagChange && (
+            <div className="relative">
+              <button
+                onClick={() => setShowTagMenu(!showTagMenu)}
+                className={cn(
+                  'p-1.5 rounded-md transition-all flex items-center gap-1 text-xs',
+                  'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                  showTagMenu && 'text-primary bg-primary/10'
+                )}
+                title="שנה תיוג"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">תיוג</span>
+              </button>
+              <AnimatePresence>
+                {showTagMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="absolute left-0 top-full mt-1 z-20 bg-background border border-border rounded-xl shadow-lg p-2 min-w-[140px]"
+                  >
+                    <p className="text-xs text-muted-foreground mb-2 px-2">בחר תיוג:</p>
+                    <div className="space-y-1">
+                      {task.tag && (
+                        <button
+                          onClick={() => {
+                            onTagChange(null);
+                            setShowTagMenu(false);
+                          }}
+                          className="w-full text-right px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                        >
+                          ❌ הסר תיוג
+                        </button>
+                      )}
+                      {(Object.entries(TAG_CONFIG) as [TagType, typeof TAG_CONFIG[TagType]][]).map(([key, config]) => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            onTagChange(key);
+                            setShowTagMenu(false);
+                          }}
+                          className={cn(
+                            'w-full text-right px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2',
+                            task.tag === key ? 'bg-primary/10' : 'hover:bg-muted'
+                          )}
+                        >
+                          <span>{config.icon}</span>
+                          <span>{config.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Subtasks Toggle */}
           {onAddSubtask && (

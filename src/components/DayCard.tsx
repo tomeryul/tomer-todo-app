@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, CalendarDays, Sparkles } from 'lucide-react';
-import { DayTasks, Priority } from '@/types/task';
+import { DayTasks, Priority, Tag } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ interface DayCardProps {
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onUpdatePriority: (taskId: string, priority: Priority) => void;
+  onUpdateTag?: (taskId: string, tag: Tag | null) => void;
   onMoveTask?: (taskId: string, toDate: string) => void;
   availableDates?: string[];
   onAddSubtask?: (taskId: string, text: string) => void;
@@ -35,6 +36,7 @@ export const DayCard = ({
   onToggleTask,
   onDeleteTask,
   onUpdatePriority,
+  onUpdateTag,
   onMoveTask,
   availableDates = [],
   onAddSubtask,
@@ -175,6 +177,7 @@ export const DayCard = ({
                 onToggle={() => onToggleTask(task.id)}
                 onDelete={() => onDeleteTask(task.id)}
                 onPriorityChange={(priority) => onUpdatePriority(task.id, priority)}
+                onTagChange={onUpdateTag ? (tag) => onUpdateTag(task.id, tag) : undefined}
                 onMoveToDate={onMoveTask ? (toDate) => onMoveTask(task.id, toDate) : undefined}
                 availableDates={availableDates}
                 currentDate={dayTasks.date}
