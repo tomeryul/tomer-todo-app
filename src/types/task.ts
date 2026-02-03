@@ -1,6 +1,6 @@
 export type Priority = 'high' | 'medium' | 'low';
 
-export type Tag = 'work' | 'studies' | 'personal' | 'urgent';
+export type Tag = 'work' | 'studies' | 'personal' | 'urgent' | 'health' | 'finance';
 
 export interface SubTask {
   id: string;
@@ -16,6 +16,7 @@ export interface Task {
   createdAt: string;
   date?: string;
   subtasks?: SubTask[];
+  tag?: Tag | null;
 }
 
 export interface DayTasks {
@@ -28,4 +29,6 @@ export const TAG_CONFIG: Record<Tag, { label: string; color: string; icon: strin
   studies: { label: 'לימודים', color: 'bg-purple-500/10 text-purple-600 border-purple-500/30', icon: '📚' },
   personal: { label: 'אישי', color: 'bg-green-500/10 text-green-600 border-green-500/30', icon: '🏠' },
   urgent: { label: 'דחוף', color: 'bg-red-500/10 text-red-600 border-red-500/30', icon: '🔥' },
+  health: { label: 'בריאות', color: 'bg-pink-500/10 text-pink-600 border-pink-500/30', icon: '❤️' },
+  finance: { label: 'כספים', color: 'bg-amber-500/10 text-amber-600 border-amber-500/30', icon: '💰' },
 };

@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CalendarPlus, LogOut, Loader2 } from 'lucide-react';
+import { CalendarPlus, LogOut, Loader2, FileSpreadsheet } from 'lucide-react';
 import { useSupabaseTasks } from '@/hooks/useSupabaseTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
 import { DayCard } from '@/components/DayCard';
 import { BacklogSection } from '@/components/BacklogSection';
-import { TodaySummary } from '@/components/TodaySummary';
 import { MultiDayTaskModal } from '@/components/MultiDayTaskModal';
+import { ExcelImportModal } from '@/components/ExcelImportModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
 import { Button } from '@/components/ui/button';
+import { Priority } from '@/types/task';
 import { format, startOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -20,21 +21,23 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
   const [isMultiDayModalOpen, setIsMultiDayModalOpen] = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [pomodoroTask, setPomodoroTask] = useState<string | null>(null);
 
   const {
     daysTasks,
     loading: tasksLoading,
     addTask,
+    addMultipleTasks,
     addTaskToMultipleDays,
     toggleTask,
     deleteTask,
     updateTaskPriority,
+    updateTaskTag,
     getProgress,
     getDayInfo,
     backlogTasks,
     moveTaskToDate,
-    todayTasks,
     addSubtask,
     toggleSubtask,
     deleteSubtask,
@@ -46,9 +49,9 @@ const Index = () => {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  const today = startOfDay(new Date());
-  const todayDayName = format(today, 'EEEE', { locale: he });
-  const todayFormattedDate = format(today, 'd בMMMM', { locale: he });
+  const handleExcelImport = async (date: string, tasks: string[], priority: Priority) => {
+    await addMultipleTasks(date, tasks, priority);
+  };
 
   if (authLoading || tasksLoading) {
     return (
@@ -81,28 +84,39 @@ const Index = () => {
       <div className="max-w-3xl mx-auto px-4 pb-12">
         <Header daysTasks={daysTasks} backlogCount={backlogTasks.length} />
 
-        {/* Today's Summary */}
-        <TodaySummary 
-          tasks={todayTasks} 
-          dayName={todayDayName} 
-          formattedDate={todayFormattedDate} 
-        />
+        {/* Action Buttons */}
+        <div className="flex gap-3 mb-6">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => setIsMultiDayModalOpen(true)}
+            className={cn(
+              'flex-1 p-4 rounded-2xl border-2 border-dashed border-primary/30',
+              'flex items-center justify-center gap-3',
+              'text-primary hover:bg-primary/5 hover:border-primary/50 transition-all',
+              'group'
+            )}
+          >
+            <CalendarPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="font-medium">הוסף משימה לכמה ימים</span>
+          </motion.button>
 
-        {/* Multi-day add button */}
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => setIsMultiDayModalOpen(true)}
-          className={cn(
-            'w-full mb-6 p-4 rounded-2xl border-2 border-dashed border-primary/30',
-            'flex items-center justify-center gap-3',
-            'text-primary hover:bg-primary/5 hover:border-primary/50 transition-all',
-            'group'
-          )}
-        >
-          <CalendarPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          <span className="font-medium">הוסף משימה לכמה ימים</span>
-        </motion.button>
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            onClick={() => setIsExcelModalOpen(true)}
+            className={cn(
+              'p-4 rounded-2xl border-2 border-dashed border-success/30',
+              'flex items-center justify-center gap-3',
+              'text-success hover:bg-success/5 hover:border-success/50 transition-all',
+              'group'
+            )}
+          >
+            <FileSpreadsheet className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="font-medium hidden sm:inline">ייבוא Excel</span>
+          </motion.button>
+        </div>
 
         {/* Backlog Section */}
         <BacklogSection
@@ -137,6 +151,7 @@ const Index = () => {
                 onUpdatePriority={(taskId, priority) =>
                   updateTaskPriority(dayTask.date, taskId, priority)
                 }
+                onUpdateTag={(taskId, tag) => updateTaskTag(dayTask.date, taskId, tag)}
                 onMoveTask={(taskId, toDate) => moveTaskToDate(dayTask.date, taskId, toDate)}
                 availableDates={daysTasks.map((d) => d.date)}
                 onAddSubtask={(taskId, text) => addSubtask(dayTask.date, taskId, text)}
@@ -155,6 +170,14 @@ const Index = () => {
         onClose={() => setIsMultiDayModalOpen(false)}
         availableDates={daysTasks.map((d) => d.date)}
         onAddTask={addTaskToMultipleDays}
+      />
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        availableDates={daysTasks.map((d) => d.date)}
+        onImportTasks={handleExcelImport}
       />
 
       {/* Pomodoro Timer */}

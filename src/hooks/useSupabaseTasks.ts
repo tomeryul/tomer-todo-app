@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, DayTasks, Priority, SubTask } from '@/types/task';
+import { Task, DayTasks, Priority, SubTask, Tag } from '@/types/task';
 import { format, addDays, startOfDay, isToday, isBefore } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-const DAYS_AHEAD = 30;
+const DAYS_AHEAD = 60;
 
 const formatDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
 const getHebrewDayName = (date: Date) => format(date, 'EEEE', { locale: he });
@@ -18,6 +18,7 @@ interface DbTask {
   text: string;
   completed: boolean;
   priority: string;
+  tag: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +108,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
         priority: task.priority as Priority,
         createdAt: task.created_at,
         date: task.date,
+        tag: task.tag as Tag | null,
         subtasks: subtasksByTaskId[task.id] || [],
       }));
 
@@ -123,7 +125,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     fetchTasks();
   }, [fetchTasks]);
 
-  const addTask = async (date: string, text: string, priority: Priority = 'medium') => {
+  const addTask = async (date: string, text: string, priority: Priority = 'medium', tag: Tag | null = null) => {
     if (!userId) return;
 
     try {
@@ -134,6 +136,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
           date,
           text,
           priority,
+          tag,
           completed: false,
         })
         .select()
@@ -148,6 +151,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
         priority: data.priority as Priority,
         createdAt: data.created_at,
         date: data.date,
+        tag: data.tag as Tag | null,
         subtasks: [],
       };
 
@@ -161,6 +165,51 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     } catch (error) {
       console.error('Error adding task:', error);
       toast.error('שגיאה בהוספת משימה');
+    }
+  };
+
+  const addMultipleTasks = async (date: string, texts: string[], priority: Priority = 'medium') => {
+    if (!userId) return;
+
+    try {
+      const tasksToInsert = texts.map(text => ({
+        user_id: userId,
+        date,
+        text,
+        priority,
+        completed: false,
+      }));
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(tasksToInsert)
+        .select();
+
+      if (error) throw error;
+
+      const newTasks = (data as DbTask[]).map(task => ({
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        priority: task.priority as Priority,
+        createdAt: task.created_at,
+        date: task.date,
+        tag: task.tag as Tag | null,
+        subtasks: [],
+      }));
+
+      setDaysTasks(prev =>
+        prev.map(day =>
+          day.date === date
+            ? { ...day, tasks: [...day.tasks, ...newTasks] }
+            : day
+        )
+      );
+
+      toast.success(`${texts.length} משימות נוספו בהצלחה`);
+    } catch (error) {
+      console.error('Error adding tasks:', error);
+      toast.error('שגיאה בהוספת משימות');
     }
   };
 
@@ -190,6 +239,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
         priority: task.priority as Priority,
         createdAt: task.created_at,
         date: task.date,
+        tag: task.tag as Tag | null,
         subtasks: [],
       }));
 
@@ -285,6 +335,33 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     } catch (error) {
       console.error('Error updating priority:', error);
       toast.error('שגיאה בעדכון עדיפות');
+    }
+  };
+
+  const updateTaskTag = async (date: string, taskId: string, tag: Tag | null) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ tag })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setDaysTasks(prev =>
+        prev.map(day =>
+          day.date === date
+            ? {
+                ...day,
+                tasks: day.tasks.map(t =>
+                  t.id === taskId ? { ...t, tag } : t
+                ),
+              }
+            : day
+        )
+      );
+    } catch (error) {
+      console.error('Error updating tag:', error);
+      toast.error('שגיאה בעדכון תיוג');
     }
   };
 
@@ -494,10 +571,12 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     daysTasks,
     loading,
     addTask,
+    addMultipleTasks,
     addTaskToMultipleDays,
     toggleTask,
     deleteTask,
     updateTaskPriority,
+    updateTaskTag,
     getProgress,
     getDayInfo,
     backlogTasks,
