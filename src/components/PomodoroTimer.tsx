@@ -71,30 +71,46 @@ export const PomodoroTimer = ({ taskName, isOpen, onClose }: PomodoroTimerProps)
 
   const scheduleTimer = (timeString: string) => {
     const [hours, minutes] = timeString.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return;
+    
     const now = new Date();
     const scheduled = new Date();
     scheduled.setHours(hours, minutes, 0, 0);
     
+    // If the time is in the past, schedule for tomorrow
     if (scheduled <= now) {
       scheduled.setDate(scheduled.getDate() + 1);
     }
     
     const delay = scheduled.getTime() - now.getTime();
     
+    // Clear any existing timeout
     if (schedulerTimeoutRef.current) {
       clearTimeout(schedulerTimeoutRef.current);
+      schedulerTimeoutRef.current = null;
     }
     
     setScheduledStart(timeString);
     setShowScheduler(false);
     
-    schedulerTimeoutRef.current = setTimeout(() => {
+    // Store the timeout with proper typing
+    const timeoutId = window.setTimeout(() => {
       setIsRunning(true);
       setScheduledStart(null);
+      schedulerTimeoutRef.current = null;
+      
+      // Play a notification sound
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp2VjX95dXiCi5eemZOJfXRxdoGNmZ6ZkoZ7cXB1gY6an5qTh3tycHWAjZqfmpOHe3Fwd4KOnJ+akod8cnF3go6cn5qSh3xycXeCjpyfmpKHfHJxd4KOnJ+akod8cnF3go6cn5qSh3xycXeCjpyfmpKHfHJxd4KOnJ+akoZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2ZnpmShn1ycHaBjZqfmpKGfHFwd4KOnJ+akYZ8cXB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfXJwdoGNmZ+ZkoZ9cnB2gY2Zn5mShn1ycHaBjZmfmZKGfQ==');
+        audio.play().catch(() => {});
+      } catch (e) {}
+      
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('⏰ הטיימר התחיל!', { body: taskName || 'הטיימר המתוזמן שלך התחיל' });
       }
     }, delay);
+    
+    schedulerTimeoutRef.current = timeoutId as unknown as NodeJS.Timeout;
   };
 
   const presetTimes = [

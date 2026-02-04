@@ -82,6 +82,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          position: number | null
           priority: string
           tag: string | null
           text: string
@@ -93,6 +94,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          position?: number | null
           priority?: string
           tag?: string | null
           text: string
@@ -104,6 +106,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          position?: number | null
           priority?: string
           tag?: string | null
           text?: string

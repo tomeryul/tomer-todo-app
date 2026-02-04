@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, CalendarDays, Sparkles } from 'lucide-react';
 import { DayTasks, Priority, Tag } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { Progress } from '@/components/ui/progress';
+import { useCompletionSound } from '@/hooks/useCompletionSound';
 import { cn } from '@/lib/utils';
 
 interface DayCardProps {
@@ -26,6 +27,8 @@ interface DayCardProps {
   onToggleSubtask?: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask?: (taskId: string, subtaskId: string) => void;
   onStartPomodoro?: (taskName: string) => void;
+  onUpdateTaskText?: (taskId: string, newText: string) => void;
+  onReorderTask?: (taskId: string, newPosition: number) => void;
 }
 
 export const DayCard = ({
@@ -43,9 +46,15 @@ export const DayCard = ({
   onToggleSubtask,
   onDeleteSubtask,
   onStartPomodoro,
+  onUpdateTaskText,
+  onReorderTask,
 }: DayCardProps) => {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const tasksContainerRef = useRef<HTMLDivElement>(null);
+  const { playCompletionSound } = useCompletionSound();
 
   const handleAddTask = () => {
     if (newTaskText.trim()) {
@@ -61,6 +70,32 @@ export const DayCard = ({
     } else if (e.key === 'Escape') {
       setIsAdding(false);
       setNewTaskText('');
+    }
+  };
+
+  const handleToggleWithSound = (taskId: string) => {
+    const task = dayTasks.tasks.find(t => t.id === taskId);
+    if (task && !task.completed) {
+      playCompletionSound();
+    }
+    onToggleTask(taskId);
+  };
+
+  const handleDragStart = (taskId: string) => {
+    setDraggedTaskId(taskId);
+  };
+
+  const handleDragEnd = () => {
+    if (draggedTaskId && dragOverIndex !== null && onReorderTask) {
+      onReorderTask(draggedTaskId, dragOverIndex);
+    }
+    setDraggedTaskId(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (draggedTaskId && index !== dragOverIndex) {
+      setDragOverIndex(index);
     }
   };
 
@@ -159,7 +194,7 @@ export const DayCard = ({
       </AnimatePresence>
 
       {/* Tasks */}
-      <div className="space-y-2">
+      <div ref={tasksContainerRef} className="space-y-2">
         <AnimatePresence mode="popLayout">
           {dayTasks.tasks.length === 0 && !isAdding ? (
             <motion.p
@@ -170,22 +205,33 @@ export const DayCard = ({
               אין משימות ליום זה
             </motion.p>
           ) : (
-            dayTasks.tasks.map((task) => (
-              <TaskItem
+            dayTasks.tasks.map((task, index) => (
+              <div
                 key={task.id}
-                task={task}
-                onToggle={() => onToggleTask(task.id)}
-                onDelete={() => onDeleteTask(task.id)}
-                onPriorityChange={(priority) => onUpdatePriority(task.id, priority)}
-                onTagChange={onUpdateTag ? (tag) => onUpdateTag(task.id, tag) : undefined}
-                onMoveToDate={onMoveTask ? (toDate) => onMoveTask(task.id, toDate) : undefined}
-                availableDates={availableDates}
-                currentDate={dayTasks.date}
-                onAddSubtask={onAddSubtask ? (text) => onAddSubtask(task.id, text) : undefined}
-                onToggleSubtask={onToggleSubtask ? (subtaskId) => onToggleSubtask(task.id, subtaskId) : undefined}
-                onDeleteSubtask={onDeleteSubtask ? (subtaskId) => onDeleteSubtask(task.id, subtaskId) : undefined}
-                onStartPomodoro={onStartPomodoro ? () => onStartPomodoro(task.text) : undefined}
-              />
+                onMouseEnter={() => draggedTaskId && handleDragOver(index)}
+                className={cn(
+                  dragOverIndex === index && draggedTaskId !== task.id && 'border-t-2 border-primary'
+                )}
+              >
+                <TaskItem
+                  task={task}
+                  onToggle={() => handleToggleWithSound(task.id)}
+                  onDelete={() => onDeleteTask(task.id)}
+                  onPriorityChange={(priority) => onUpdatePriority(task.id, priority)}
+                  onTagChange={onUpdateTag ? (tag) => onUpdateTag(task.id, tag) : undefined}
+                  onMoveToDate={onMoveTask ? (toDate) => onMoveTask(task.id, toDate) : undefined}
+                  availableDates={availableDates}
+                  currentDate={dayTasks.date}
+                  onAddSubtask={onAddSubtask ? (text) => onAddSubtask(task.id, text) : undefined}
+                  onToggleSubtask={onToggleSubtask ? (subtaskId) => onToggleSubtask(task.id, subtaskId) : undefined}
+                  onDeleteSubtask={onDeleteSubtask ? (subtaskId) => onDeleteSubtask(task.id, subtaskId) : undefined}
+                  onStartPomodoro={onStartPomodoro ? () => onStartPomodoro(task.text) : undefined}
+                  onUpdateText={onUpdateTaskText ? (newText) => onUpdateTaskText(task.id, newText) : undefined}
+                  onDragStart={() => handleDragStart(task.id)}
+                  onDragEnd={handleDragEnd}
+                  isDragging={draggedTaskId === task.id}
+                />
+              </div>
             ))
           )}
         </AnimatePresence>

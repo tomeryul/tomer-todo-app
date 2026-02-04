@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Timer, Tag } from 'lucide-react';
+import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Timer, Tag, GripVertical } from 'lucide-react';
 import { Task, Priority, SubTask, Tag as TagType, TAG_CONFIG } from '@/types/task';
+import { EditableTaskText } from './EditableTaskText';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -19,6 +20,10 @@ interface TaskItemProps {
   onToggleSubtask?: (subtaskId: string) => void;
   onDeleteSubtask?: (subtaskId: string) => void;
   onStartPomodoro?: () => void;
+  onUpdateText?: (newText: string) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  isDragging?: boolean;
 }
 
 const priorityColors: Record<Priority, string> = {
@@ -33,7 +38,6 @@ const priorityLabels: Record<Priority, string> = {
   low: 'נמוכה',
 };
 
-
 export const TaskItem = ({ 
   task, 
   onToggle, 
@@ -47,6 +51,10 @@ export const TaskItem = ({
   onToggleSubtask,
   onDeleteSubtask,
   onStartPomodoro,
+  onUpdateText,
+  onDragStart,
+  onDragEnd,
+  isDragging = false,
 }: TaskItemProps) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showTagMenu, setShowTagMenu] = useState(false);
@@ -79,19 +87,30 @@ export const TaskItem = ({
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: 1, y: 0, scale: isDragging ? 1.02 : 1 }}
       exit={{ opacity: 0, x: 50 }}
       layout
       className={cn(
         'rounded-lg transition-all duration-200 border group',
         'bg-background/50 hover:bg-background border-transparent hover:border-border',
-        task.completed && 'opacity-60'
+        task.completed && 'opacity-60',
+        isDragging && 'shadow-lg border-primary/50 bg-background'
       )}
     >
       {/* Main Task Content */}
       <div className="p-3">
-        {/* First Row: Checkbox + Task Text */}
-        <div className="flex items-start gap-3">
+        {/* First Row: Drag Handle + Checkbox + Task Text */}
+        <div className="flex items-start gap-2">
+          {/* Drag Handle */}
+          <button
+            className="flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-0.5 opacity-0 group-hover:opacity-100"
+            onMouseDown={onDragStart}
+            onMouseUp={onDragEnd}
+            title="גרור לשינוי סדר"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+
           <button
             onClick={onToggle}
             className={cn(
@@ -113,14 +132,22 @@ export const TaskItem = ({
             )}
           </button>
 
-          <p
-            className={cn(
-              'flex-1 text-sm leading-relaxed transition-all duration-200',
-              task.completed && 'line-through text-muted-foreground'
-            )}
-          >
-            {task.text}
-          </p>
+          {onUpdateText ? (
+            <EditableTaskText
+              text={task.text}
+              completed={task.completed}
+              onSave={onUpdateText}
+            />
+          ) : (
+            <p
+              className={cn(
+                'flex-1 text-sm leading-relaxed transition-all duration-200',
+                task.completed && 'line-through text-muted-foreground'
+              )}
+            >
+              {task.text}
+            </p>
+          )}
         </div>
 
         {/* Second Row: Actions & Info */}
