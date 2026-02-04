@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CalendarPlus, LogOut, Loader2, FileSpreadsheet } from 'lucide-react';
+import { CalendarPlus, LogOut, Loader2, FileSpreadsheet, Repeat } from 'lucide-react';
 import { useSupabaseTasks } from '@/hooks/useSupabaseTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
@@ -9,6 +9,7 @@ import { DayCard } from '@/components/DayCard';
 import { BacklogSection } from '@/components/BacklogSection';
 import { MultiDayTaskModal } from '@/components/MultiDayTaskModal';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
+import { RecurringTaskModal } from '@/components/RecurringTaskModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ const Index = () => {
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
   const [isMultiDayModalOpen, setIsMultiDayModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [pomodoroTask, setPomodoroTask] = useState<string | null>(null);
 
   const {
@@ -34,6 +36,9 @@ const Index = () => {
     deleteTask,
     updateTaskPriority,
     updateTaskTag,
+    updateTaskText,
+    reorderTasks,
+    addRecurringTask,
     getProgress,
     getDayInfo,
     backlogTasks,
@@ -85,20 +90,36 @@ const Index = () => {
         <Header daysTasks={daysTasks} backlogCount={backlogTasks.length} />
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-6 flex-wrap">
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => setIsMultiDayModalOpen(true)}
             className={cn(
-              'flex-1 p-4 rounded-2xl border-2 border-dashed border-primary/30',
+              'flex-1 min-w-[140px] p-4 rounded-2xl border-2 border-dashed border-primary/30',
               'flex items-center justify-center gap-3',
               'text-primary hover:bg-primary/5 hover:border-primary/50 transition-all',
               'group'
             )}
           >
             <CalendarPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="font-medium">הוסף משימה לכמה ימים</span>
+            <span className="font-medium">הוסף לכמה ימים</span>
+          </motion.button>
+
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            onClick={() => setIsRecurringModalOpen(true)}
+            className={cn(
+              'flex-1 min-w-[140px] p-4 rounded-2xl border-2 border-dashed border-accent/50',
+              'flex items-center justify-center gap-3',
+              'text-accent-foreground hover:bg-accent/10 hover:border-accent transition-all',
+              'group'
+            )}
+          >
+            <Repeat className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="font-medium">משימה קבועה</span>
           </motion.button>
 
           <motion.button
@@ -158,6 +179,8 @@ const Index = () => {
                 onToggleSubtask={(taskId, subtaskId) => toggleSubtask(dayTask.date, taskId, subtaskId)}
                 onDeleteSubtask={(taskId, subtaskId) => deleteSubtask(dayTask.date, taskId, subtaskId)}
                 onStartPomodoro={(taskName) => setPomodoroTask(taskName)}
+                onUpdateTaskText={(taskId, newText) => updateTaskText(dayTask.date, taskId, newText)}
+                onReorderTask={(taskId, newPosition) => reorderTasks(dayTask.date, taskId, newPosition)}
               />
             </motion.div>
           ))}
@@ -178,6 +201,13 @@ const Index = () => {
         onClose={() => setIsExcelModalOpen(false)}
         availableDates={daysTasks.map((d) => d.date)}
         onImportTasks={handleExcelImport}
+      />
+
+      {/* Recurring Task Modal */}
+      <RecurringTaskModal
+        isOpen={isRecurringModalOpen}
+        onClose={() => setIsRecurringModalOpen(false)}
+        onAddRecurringTask={addRecurringTask}
       />
 
       {/* Pomodoro Timer */}

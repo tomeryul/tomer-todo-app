@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, DayTasks, Priority, SubTask, Tag } from '@/types/task';
-import { format, addDays, startOfDay, isToday, isBefore } from 'date-fns';
+import { format, addDays, startOfDay, isToday, isBefore, getDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
 
@@ -564,6 +564,130 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     return today?.tasks || [];
   };
 
+  const updateTaskText = async (date: string, taskId: string, newText: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ text: newText })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setDaysTasks(prev =>
+        prev.map(day =>
+          day.date === date
+            ? {
+                ...day,
+                tasks: day.tasks.map(t =>
+                  t.id === taskId ? { ...t, text: newText } : t
+                ),
+              }
+            : day
+        )
+      );
+    } catch (error) {
+      console.error('Error updating task text:', error);
+      toast.error('שגיאה בעדכון המשימה');
+    }
+  };
+
+  const reorderTasks = async (date: string, taskId: string, newPosition: number) => {
+    const day = daysTasks.find(d => d.date === date);
+    if (!day) return;
+
+    const tasks = [...day.tasks];
+    const oldIndex = tasks.findIndex(t => t.id === taskId);
+    if (oldIndex === -1) return;
+
+    const [movedTask] = tasks.splice(oldIndex, 1);
+    tasks.splice(newPosition, 0, movedTask);
+
+    // Optimistic update
+    setDaysTasks(prev =>
+      prev.map(d =>
+        d.date === date ? { ...d, tasks } : d
+      )
+    );
+
+    // Update positions in database
+    try {
+      const updates = tasks.map((task, index) => 
+        supabase
+          .from('tasks')
+          .update({ position: index })
+          .eq('id', task.id)
+      );
+      
+      await Promise.all(updates);
+    } catch (error) {
+      console.error('Error reordering tasks:', error);
+      toast.error('שגיאה בסידור המשימות');
+      // Revert on error
+      fetchTasks();
+    }
+  };
+
+  const addRecurringTask = async (text: string, dayOfWeek: number, priority: Priority = 'medium') => {
+    if (!userId) return;
+
+    const today = startOfDay(new Date());
+    const datesToAdd: string[] = [];
+
+    // Find all dates within DAYS_AHEAD that match the given day of week
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      const date = addDays(today, i);
+      if (getDay(date) === dayOfWeek) {
+        datesToAdd.push(formatDateKey(date));
+      }
+    }
+
+    if (datesToAdd.length === 0) return;
+
+    try {
+      const tasksToInsert = datesToAdd.map((date, index) => ({
+        user_id: userId,
+        date,
+        text,
+        priority,
+        completed: false,
+        position: index,
+      }));
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(tasksToInsert)
+        .select();
+
+      if (error) throw error;
+
+      const newTasks = (data as any[]).map(task => ({
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        priority: task.priority as Priority,
+        createdAt: task.created_at,
+        date: task.date,
+        tag: task.tag as Tag | null,
+        subtasks: [],
+      }));
+
+      setDaysTasks(prev =>
+        prev.map(day => {
+          const tasksForDay = newTasks.filter(t => t.date === day.date);
+          if (tasksForDay.length > 0) {
+            return { ...day, tasks: [...day.tasks, ...tasksForDay] };
+          }
+          return day;
+        })
+      );
+
+      toast.success(`נוספו ${datesToAdd.length} משימות קבועות`);
+    } catch (error) {
+      console.error('Error adding recurring tasks:', error);
+      toast.error('שגיאה בהוספת משימות קבועות');
+    }
+  };
+
   const backlogTasks = getBacklogTasks();
   const todayTasks = getTodayTasks();
 
@@ -577,6 +701,9 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     deleteTask,
     updateTaskPriority,
     updateTaskTag,
+    updateTaskText,
+    reorderTasks,
+    addRecurringTask,
     getProgress,
     getDayInfo,
     backlogTasks,
