@@ -1,25 +1,95 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 
-// A cheerful completion sound encoded as base64
-const COMPLETION_SOUND_BASE64 = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhAC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAA4T/////////AAAAAAAAAAAAAAAAAAAAAP/7kGQAAAAAANIAAAAAExBRgAAADSAAAA38HvK4YAACHgAAAV+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr//tSZAUAAADSAAAAAATEFGAAAANIAAAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uSZAcAAADSAAAAAATEFGAAAANIAAAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//tSZA4AAADSAAAAAATEFGAAAANIAAAABMQUU/8AAAANIAAAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+// Create audio context for reliable playback
+const createCompletionSound = (): AudioBuffer | null => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const sampleRate = audioContext.sampleRate;
+    const duration = 0.15;
+    const buffer = audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Create a pleasant "ding" sound
+    for (let i = 0; i < buffer.length; i++) {
+      const t = i / sampleRate;
+      // Two frequencies for a pleasant chord
+      const freq1 = 880; // A5
+      const freq2 = 1320; // E6
+      const envelope = Math.exp(-t * 15); // Quick decay
+      data[i] = envelope * 0.3 * (
+        Math.sin(2 * Math.PI * freq1 * t) + 
+        0.5 * Math.sin(2 * Math.PI * freq2 * t)
+      );
+    }
+    
+    return buffer;
+  } catch (e) {
+    return null;
+  }
+};
 
 export const useCompletionSound = () => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const bufferRef = useRef<AudioBuffer | null>(null);
+
+  useEffect(() => {
+    // Initialize on first user interaction
+    const initAudio = () => {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        bufferRef.current = createCompletionSound();
+      }
+    };
+    
+    document.addEventListener('click', initAudio, { once: true });
+    return () => document.removeEventListener('click', initAudio);
+  }, []);
 
   const playCompletionSound = useCallback(() => {
     try {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(COMPLETION_SOUND_BASE64);
-        audioRef.current.volume = 0.5;
+      // Create context on demand if not exists
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       
-      // Reset and play
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {
-        // Ignore autoplay errors - user may not have interacted yet
-      });
+      const ctx = audioContextRef.current;
+      
+      // Resume if suspended
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      
+      // Create buffer if needed
+      if (!bufferRef.current) {
+        const sampleRate = ctx.sampleRate;
+        const duration = 0.15;
+        const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < buffer.length; i++) {
+          const t = i / sampleRate;
+          const freq1 = 880;
+          const freq2 = 1320;
+          const envelope = Math.exp(-t * 15);
+          data[i] = envelope * 0.3 * (
+            Math.sin(2 * Math.PI * freq1 * t) + 
+            0.5 * Math.sin(2 * Math.PI * freq2 * t)
+          );
+        }
+        bufferRef.current = buffer;
+      }
+      
+      const source = ctx.createBufferSource();
+      source.buffer = bufferRef.current;
+      
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.5;
+      
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      source.start(0);
     } catch (e) {
-      // Ignore audio errors
+      // Ignore audio errors silently
     }
   }, []);
 

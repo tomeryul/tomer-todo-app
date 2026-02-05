@@ -26,7 +26,7 @@ interface DayCardProps {
   onAddSubtask?: (taskId: string, text: string) => void;
   onToggleSubtask?: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask?: (taskId: string, subtaskId: string) => void;
-  onStartPomodoro?: (taskName: string) => void;
+  onUpdateSubtaskText?: (taskId: string, subtaskId: string, newText: string) => void;
   onUpdateTaskText?: (taskId: string, newText: string) => void;
   onReorderTask?: (taskId: string, newPosition: number) => void;
 }
@@ -45,7 +45,7 @@ export const DayCard = ({
   onAddSubtask,
   onToggleSubtask,
   onDeleteSubtask,
-  onStartPomodoro,
+  onUpdateSubtaskText,
   onUpdateTaskText,
   onReorderTask,
 }: DayCardProps) => {
@@ -81,22 +81,32 @@ export const DayCard = ({
     onToggleTask(taskId);
   };
 
-  const handleDragStart = (taskId: string) => {
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
     setDraggedTaskId(taskId);
   };
 
   const handleDragEnd = () => {
-    if (draggedTaskId && dragOverIndex !== null && onReorderTask) {
-      onReorderTask(draggedTaskId, dragOverIndex);
-    }
     setDraggedTaskId(null);
     setDragOverIndex(null);
   };
 
-  const handleDragOver = (index: number) => {
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     if (draggedTaskId && index !== dragOverIndex) {
       setDragOverIndex(index);
     }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedTaskId && onReorderTask) {
+      onReorderTask(draggedTaskId, targetIndex);
+    }
+    setDraggedTaskId(null);
+    setDragOverIndex(null);
   };
 
   return (
@@ -208,9 +218,15 @@ export const DayCard = ({
             dayTasks.tasks.map((task, index) => (
               <div
                 key={task.id}
-                onMouseEnter={() => draggedTaskId && handleDragOver(index)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
                 className={cn(
-                  dragOverIndex === index && draggedTaskId !== task.id && 'border-t-2 border-primary'
+                  'transition-all duration-150',
+                  dragOverIndex === index && draggedTaskId !== task.id && 'border-t-2 border-primary pt-1',
+                  draggedTaskId === task.id && 'opacity-50'
                 )}
               >
                 <TaskItem
@@ -225,10 +241,8 @@ export const DayCard = ({
                   onAddSubtask={onAddSubtask ? (text) => onAddSubtask(task.id, text) : undefined}
                   onToggleSubtask={onToggleSubtask ? (subtaskId) => onToggleSubtask(task.id, subtaskId) : undefined}
                   onDeleteSubtask={onDeleteSubtask ? (subtaskId) => onDeleteSubtask(task.id, subtaskId) : undefined}
-                  onStartPomodoro={onStartPomodoro ? () => onStartPomodoro(task.text) : undefined}
+                  onUpdateSubtaskText={onUpdateSubtaskText ? (subtaskId, newText) => onUpdateSubtaskText(task.id, subtaskId, newText) : undefined}
                   onUpdateText={onUpdateTaskText ? (newText) => onUpdateTaskText(task.id, newText) : undefined}
-                  onDragStart={() => handleDragStart(task.id)}
-                  onDragEnd={handleDragEnd}
                   isDragging={draggedTaskId === task.id}
                 />
               </div>
