@@ -511,6 +511,40 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     }
   };
 
+  const updateSubtaskText = async (date: string, taskId: string, subtaskId: string, newText: string) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .update({ text: newText })
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      setDaysTasks(prev =>
+        prev.map(day =>
+          day.date === date
+            ? {
+                ...day,
+                tasks: day.tasks.map(task =>
+                  task.id === taskId
+                    ? {
+                        ...task,
+                        subtasks: (task.subtasks || []).map(s =>
+                          s.id === subtaskId ? { ...s, text: newText } : s
+                        ),
+                      }
+                    : task
+                ),
+              }
+            : day
+        )
+      );
+    } catch (error) {
+      console.error('Error updating subtask text:', error);
+      toast.error('שגיאה בעדכון תת-משימה');
+    }
+  };
+
   const getProgress = (tasks: Task[]) => {
     if (tasks.length === 0) return 0;
 
@@ -712,5 +746,6 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
+    updateSubtaskText,
   };
 };

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Timer, Tag, GripVertical } from 'lucide-react';
+import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Tag } from 'lucide-react';
 import { Task, Priority, SubTask, Tag as TagType, TAG_CONFIG } from '@/types/task';
 import { EditableTaskText } from './EditableTaskText';
+import { EditableSubtaskText } from './EditableSubtaskText';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -19,10 +20,8 @@ interface TaskItemProps {
   onAddSubtask?: (subtaskText: string) => void;
   onToggleSubtask?: (subtaskId: string) => void;
   onDeleteSubtask?: (subtaskId: string) => void;
-  onStartPomodoro?: () => void;
+  onUpdateSubtaskText?: (subtaskId: string, newText: string) => void;
   onUpdateText?: (newText: string) => void;
-  onDragStart?: () => void;
-  onDragEnd?: () => void;
   isDragging?: boolean;
 }
 
@@ -50,10 +49,8 @@ export const TaskItem = ({
   onAddSubtask,
   onToggleSubtask,
   onDeleteSubtask,
-  onStartPomodoro,
+  onUpdateSubtaskText,
   onUpdateText,
-  onDragStart,
-  onDragEnd,
   isDragging = false,
 }: TaskItemProps) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -99,18 +96,8 @@ export const TaskItem = ({
     >
       {/* Main Task Content */}
       <div className="p-3">
-        {/* First Row: Drag Handle + Checkbox + Task Text */}
+        {/* First Row: Checkbox + Task Text */}
         <div className="flex items-start gap-2">
-          {/* Drag Handle */}
-          <button
-            className="flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-0.5 opacity-0 group-hover:opacity-100"
-            onMouseDown={onDragStart}
-            onMouseUp={onDragEnd}
-            title="גרור לשינוי סדר"
-          >
-            <GripVertical className="w-4 h-4" />
-          </button>
-
           <button
             onClick={onToggle}
             className={cn(
@@ -151,7 +138,7 @@ export const TaskItem = ({
         </div>
 
         {/* Second Row: Actions & Info */}
-        <div className="flex items-center gap-2 mt-3 mr-9 flex-wrap">
+        <div className="flex items-center gap-2 mt-3 mr-8 flex-wrap">
           {/* Subtask Progress */}
           {hasSubtasks && (
             <div className="flex items-center gap-2">
@@ -271,18 +258,6 @@ export const TaskItem = ({
             </button>
           )}
 
-          {/* Pomodoro Button */}
-          {onStartPomodoro && (
-            <button
-              onClick={onStartPomodoro}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all flex items-center gap-1 text-xs"
-              title="התחל טיימר"
-            >
-              <Timer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">טיימר</span>
-            </button>
-          )}
-
           {/* Move Button */}
           {onMoveToDate && filteredDates.length > 0 && (
             <div className="relative">
@@ -346,7 +321,7 @@ export const TaskItem = ({
             exit={{ opacity: 0, height: 0 }}
             className="border-t border-border/50 px-3 pb-3"
           >
-            <div className="pt-2 pr-9 space-y-2">
+            <div className="pt-2 pr-8 space-y-2">
               {/* Existing Subtasks */}
               {subtasks.map((subtask) => (
                 <div key={subtask.id} className="flex items-center gap-2 group/sub">
@@ -364,14 +339,22 @@ export const TaskItem = ({
                       <Check className="w-2.5 h-2.5 text-primary-foreground" />
                     )}
                   </button>
-                  <span
-                    className={cn(
-                      'flex-1 text-xs',
-                      subtask.completed && 'line-through text-muted-foreground'
-                    )}
-                  >
-                    {subtask.text}
-                  </span>
+                  {onUpdateSubtaskText ? (
+                    <EditableSubtaskText
+                      text={subtask.text}
+                      completed={subtask.completed}
+                      onSave={(newText) => onUpdateSubtaskText(subtask.id, newText)}
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        'flex-1 text-xs',
+                        subtask.completed && 'line-through text-muted-foreground'
+                      )}
+                    >
+                      {subtask.text}
+                    </span>
+                  )}
                   <button
                     onClick={() => onDeleteSubtask?.(subtask.id)}
                     className="opacity-0 group-hover/sub:opacity-100 p-1 rounded text-muted-foreground hover:text-destructive transition-all"

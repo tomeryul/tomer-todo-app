@@ -11,7 +11,6 @@ import { MultiDayTaskModal } from '@/components/MultiDayTaskModal';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
 import { RecurringTaskModal } from '@/components/RecurringTaskModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { PomodoroTimer } from '@/components/PomodoroTimer';
 import { Button } from '@/components/ui/button';
 import { Priority } from '@/types/task';
 import { format, startOfDay } from 'date-fns';
@@ -24,7 +23,6 @@ const Index = () => {
   const [isMultiDayModalOpen, setIsMultiDayModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
-  const [pomodoroTask, setPomodoroTask] = useState<string | null>(null);
 
   const {
     daysTasks,
@@ -46,6 +44,7 @@ const Index = () => {
     addSubtask,
     toggleSubtask,
     deleteSubtask,
+    updateSubtaskText,
   } = useSupabaseTasks(user?.id);
 
   useEffect(() => {
@@ -178,7 +177,7 @@ const Index = () => {
                 onAddSubtask={(taskId, text) => addSubtask(dayTask.date, taskId, text)}
                 onToggleSubtask={(taskId, subtaskId) => toggleSubtask(dayTask.date, taskId, subtaskId)}
                 onDeleteSubtask={(taskId, subtaskId) => deleteSubtask(dayTask.date, taskId, subtaskId)}
-                onStartPomodoro={(taskName) => setPomodoroTask(taskName)}
+                onUpdateSubtaskText={(taskId, subtaskId, newText) => updateSubtaskText(dayTask.date, taskId, subtaskId, newText)}
                 onUpdateTaskText={(taskId, newText) => updateTaskText(dayTask.date, taskId, newText)}
                 onReorderTask={(taskId, newPosition) => reorderTasks(dayTask.date, taskId, newPosition)}
               />
@@ -208,13 +207,6 @@ const Index = () => {
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         onAddRecurringTask={addRecurringTask}
-      />
-
-      {/* Pomodoro Timer */}
-      <PomodoroTimer
-        isOpen={pomodoroTask !== null}
-        onClose={() => setPomodoroTask(pomodoroTask === null ? '' : null)}
-        taskName={pomodoroTask || undefined}
       />
     </div>
   );
