@@ -37,6 +37,7 @@ const Index = () => {
     updateTaskText,
     reorderTasks,
     addRecurringTask,
+    addIntervalRecurringTask,
     getProgress,
     getDayInfo,
     backlogTasks,
@@ -179,7 +180,8 @@ const Index = () => {
                 onDeleteSubtask={(taskId, subtaskId) => deleteSubtask(dayTask.date, taskId, subtaskId)}
                 onUpdateSubtaskText={(taskId, subtaskId, newText) => updateSubtaskText(dayTask.date, taskId, subtaskId, newText)}
                 onUpdateTaskText={(taskId, newText) => updateTaskText(dayTask.date, taskId, newText)}
-                onReorderTask={(taskId, newPosition) => reorderTasks(dayTask.date, taskId, newPosition)}
+                onMoveTaskUp={(taskId) => reorderTasks(dayTask.date, taskId, -1)}
+                onMoveTaskDown={(taskId) => reorderTasks(dayTask.date, taskId, 1)}
               />
             </motion.div>
           ))}
@@ -207,6 +209,7 @@ const Index = () => {
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         onAddRecurringTask={addRecurringTask}
+        onAddIntervalRecurringTask={addIntervalRecurringTask}
       />
     </div>
   );

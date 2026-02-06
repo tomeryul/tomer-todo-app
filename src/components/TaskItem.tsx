@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Tag } from 'lucide-react';
+import { Check, Trash2, Flag, ArrowLeftRight, Plus, ChevronDown, ChevronUp, Tag, ArrowUp, ArrowDown } from 'lucide-react';
 import { Task, Priority, SubTask, Tag as TagType, TAG_CONFIG } from '@/types/task';
 import { EditableTaskText } from './EditableTaskText';
 import { EditableSubtaskText } from './EditableSubtaskText';
@@ -22,7 +22,8 @@ interface TaskItemProps {
   onDeleteSubtask?: (subtaskId: string) => void;
   onUpdateSubtaskText?: (subtaskId: string, newText: string) => void;
   onUpdateText?: (newText: string) => void;
-  isDragging?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
 const priorityColors: Record<Priority, string> = {
@@ -51,7 +52,8 @@ export const TaskItem = ({
   onDeleteSubtask,
   onUpdateSubtaskText,
   onUpdateText,
-  isDragging = false,
+  onMoveUp,
+  onMoveDown,
 }: TaskItemProps) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
   const [showTagMenu, setShowTagMenu] = useState(false);
@@ -84,14 +86,13 @@ export const TaskItem = ({
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0, scale: isDragging ? 1.02 : 1 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 50 }}
       layout
       className={cn(
         'rounded-lg transition-all duration-200 border group',
         'bg-background/50 hover:bg-background border-transparent hover:border-border',
-        task.completed && 'opacity-60',
-        isDragging && 'shadow-lg border-primary/50 bg-background'
+        task.completed && 'opacity-60'
       )}
     >
       {/* Main Task Content */}
@@ -302,10 +303,45 @@ export const TaskItem = ({
             </div>
           )}
 
+          {/* Move Up/Down Buttons */}
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex items-center gap-0.5 mr-auto">
+              <button
+                onClick={onMoveUp}
+                disabled={!onMoveUp}
+                className={cn(
+                  'p-1.5 rounded-md transition-all',
+                  onMoveUp 
+                    ? 'text-muted-foreground hover:text-primary hover:bg-primary/10' 
+                    : 'text-muted-foreground/30 cursor-not-allowed'
+                )}
+                title="הזז למעלה"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={onMoveDown}
+                disabled={!onMoveDown}
+                className={cn(
+                  'p-1.5 rounded-md transition-all',
+                  onMoveDown 
+                    ? 'text-muted-foreground hover:text-primary hover:bg-primary/10' 
+                    : 'text-muted-foreground/30 cursor-not-allowed'
+                )}
+                title="הזז למטה"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Delete Button */}
           <button
             onClick={onDelete}
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all mr-auto"
+            className={cn(
+              'opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all',
+              !(onMoveUp || onMoveDown) && 'mr-auto'
+            )}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
