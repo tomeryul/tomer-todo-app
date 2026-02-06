@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Repeat } from 'lucide-react';
+import { X, Calendar, Repeat, Hash } from 'lucide-react';
 import { Priority } from '@/types/task';
 import { cn } from '@/lib/utils';
+
+type RecurringMode = 'weekly' | 'interval';
 
 interface RecurringTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddRecurringTask: (text: string, dayOfWeek: number, priority: Priority) => void;
+  onAddIntervalRecurringTask: (text: string, intervalDays: number, priority: Priority) => void;
 }
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
@@ -30,16 +33,24 @@ export const RecurringTaskModal = ({
   isOpen,
   onClose,
   onAddRecurringTask,
+  onAddIntervalRecurringTask,
 }: RecurringTaskModalProps) => {
   const [taskText, setTaskText] = useState('');
+  const [mode, setMode] = useState<RecurringMode>('weekly');
   const [selectedDay, setSelectedDay] = useState<number>(0);
+  const [intervalDays, setIntervalDays] = useState<number>(7);
   const [priority, setPriority] = useState<Priority>('medium');
 
   const handleSubmit = () => {
     if (taskText.trim()) {
-      onAddRecurringTask(taskText.trim(), selectedDay, priority);
+      if (mode === 'weekly') {
+        onAddRecurringTask(taskText.trim(), selectedDay, priority);
+      } else {
+        onAddIntervalRecurringTask(taskText.trim(), intervalDays, priority);
+      }
       setTaskText('');
       setSelectedDay(0);
+      setIntervalDays(7);
       setPriority('medium');
       onClose();
     }
@@ -61,13 +72,13 @@ export const RecurringTaskModal = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed inset-x-4 top-[15%] mx-auto max-w-md bg-background border border-border rounded-3xl shadow-2xl z-50 overflow-hidden"
+            className="fixed inset-x-4 top-[10%] mx-auto max-w-md bg-background border border-border rounded-3xl shadow-2xl z-50 overflow-hidden max-h-[85vh] overflow-y-auto"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-background">
               <div className="flex items-center gap-2">
                 <Repeat className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold">משימה קבועה שבועית</h2>
+                <h2 className="font-semibold">משימה חוזרת</h2>
               </div>
               <button
                 onClick={onClose}
@@ -96,29 +107,90 @@ export const RecurringTaskModal = ({
                 />
               </div>
 
-              {/* Day Selection */}
+              {/* Mode Selection */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <Calendar className="w-4 h-4 inline ml-1" />
-                  בחר יום בשבוע
-                </label>
-                <div className="grid grid-cols-7 gap-1">
-                  {daysOfWeek.map((day) => (
-                    <button
-                      key={day.value}
-                      onClick={() => setSelectedDay(day.value)}
-                      className={cn(
-                        'p-2 text-xs rounded-lg border transition-all text-center',
-                        selectedDay === day.value
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted border-border hover:border-primary/50'
-                      )}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
+                <label className="block text-sm font-medium mb-2">סוג חזרה</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setMode('weekly')}
+                    className={cn(
+                      'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-medium border transition-all',
+                      mode === 'weekly'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted border-border hover:border-primary/50'
+                    )}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    יום קבוע בשבוע
+                  </button>
+                  <button
+                    onClick={() => setMode('interval')}
+                    className={cn(
+                      'flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-medium border transition-all',
+                      mode === 'interval'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted border-border hover:border-primary/50'
+                    )}
+                  >
+                    <Hash className="w-4 h-4" />
+                    כל X ימים
+                  </button>
                 </div>
               </div>
+
+              {/* Weekly Day Selection */}
+              {mode === 'weekly' && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    <Calendar className="w-4 h-4 inline ml-1" />
+                    בחר יום בשבוע
+                  </label>
+                  <div className="grid grid-cols-7 gap-1">
+                    {daysOfWeek.map((day) => (
+                      <button
+                        key={day.value}
+                        onClick={() => setSelectedDay(day.value)}
+                        className={cn(
+                          'p-2 text-xs rounded-lg border transition-all text-center',
+                          selectedDay === day.value
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted border-border hover:border-primary/50'
+                        )}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Interval Days Input */}
+              {mode === 'interval' && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    <Hash className="w-4 h-4 inline ml-1" />
+                    כל כמה ימים?
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={intervalDays}
+                      onChange={(e) => setIntervalDays(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
+                      className={cn(
+                        'w-24 px-4 py-3 rounded-xl text-sm text-center',
+                        'bg-muted border border-border',
+                        'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary'
+                      )}
+                    />
+                    <span className="text-sm text-muted-foreground">ימים</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    למשל: 29 ימים = לקנות קונצרטה כל חודש
+                  </p>
+                </div>
+              )}
 
               {/* Priority Selection */}
               <div>
@@ -143,7 +215,7 @@ export const RecurringTaskModal = ({
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border flex gap-2">
+            <div className="p-4 border-t border-border flex gap-2 sticky bottom-0 bg-background">
               <button
                 onClick={onClose}
                 className="flex-1 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors font-medium"
@@ -159,7 +231,10 @@ export const RecurringTaskModal = ({
                   !taskText.trim() && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                הוסף לכל ימי {daysOfWeek[selectedDay].label}
+                {mode === 'weekly' 
+                  ? `הוסף לכל ימי ${daysOfWeek[selectedDay].label}`
+                  : `הוסף כל ${intervalDays} ימים`
+                }
               </button>
             </div>
           </motion.div>

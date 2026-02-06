@@ -625,7 +625,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     }
   };
 
-  const reorderTasks = async (date: string, taskId: string, newPosition: number) => {
+  const reorderTasks = async (date: string, taskId: string, direction: number) => {
     const day = daysTasks.find(d => d.date === date);
     if (!day) return;
 
@@ -633,8 +633,11 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     const oldIndex = tasks.findIndex(t => t.id === taskId);
     if (oldIndex === -1) return;
 
-    const [movedTask] = tasks.splice(oldIndex, 1);
-    tasks.splice(newPosition, 0, movedTask);
+    const newIndex = oldIndex + direction;
+    if (newIndex < 0 || newIndex >= tasks.length) return;
+
+    // Swap tasks
+    [tasks[oldIndex], tasks[newIndex]] = [tasks[newIndex], tasks[oldIndex]];
 
     // Optimistic update
     setDaysTasks(prev =>
@@ -722,6 +725,65 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     }
   };
 
+  const addIntervalRecurringTask = async (text: string, intervalDays: number, priority: Priority = 'medium') => {
+    if (!userId) return;
+
+    const today = startOfDay(new Date());
+    const datesToAdd: string[] = [];
+
+    // Add task every intervalDays starting from today
+    for (let i = 0; i < DAYS_AHEAD; i += intervalDays) {
+      const date = addDays(today, i);
+      datesToAdd.push(formatDateKey(date));
+    }
+
+    if (datesToAdd.length === 0) return;
+
+    try {
+      const tasksToInsert = datesToAdd.map((date, index) => ({
+        user_id: userId,
+        date,
+        text,
+        priority,
+        completed: false,
+        position: index,
+      }));
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(tasksToInsert)
+        .select();
+
+      if (error) throw error;
+
+      const newTasks = (data as any[]).map(task => ({
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        priority: task.priority as Priority,
+        createdAt: task.created_at,
+        date: task.date,
+        tag: task.tag as Tag | null,
+        subtasks: [],
+      }));
+
+      setDaysTasks(prev =>
+        prev.map(day => {
+          const tasksForDay = newTasks.filter(t => t.date === day.date);
+          if (tasksForDay.length > 0) {
+            return { ...day, tasks: [...day.tasks, ...tasksForDay] };
+          }
+          return day;
+        })
+      );
+
+      toast.success(`נוספו ${datesToAdd.length} משימות כל ${intervalDays} ימים`);
+    } catch (error) {
+      console.error('Error adding interval recurring tasks:', error);
+      toast.error('שגיאה בהוספת משימות חוזרות');
+    }
+  };
+
   const backlogTasks = getBacklogTasks();
   const todayTasks = getTodayTasks();
 
@@ -738,6 +800,7 @@ export const useSupabaseTasks = (userId: string | undefined) => {
     updateTaskText,
     reorderTasks,
     addRecurringTask,
+    addIntervalRecurringTask,
     getProgress,
     getDayInfo,
     backlogTasks,
